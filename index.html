@@ -178,27 +178,45 @@
   .artifact-status{font-size:14px;flex-shrink:0;cursor:pointer;}
   .empty-hint{color:var(--text-faint);font-size:12px;text-align:center;padding:20px 8px;}
 
-  /* ---------- Human gate ---------- */
-  .gate-panel{
-    margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-    overflow:hidden;
+  /* ---------- プロジェクトオーナーチェック(旧:人間ゲート) ---------- */
+  .gate-indicator-btn{
+    margin-left:auto;width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;
+    background:var(--hirameki);color:#fff;font-size:15px;display:none;
+    align-items:center;justify-content:center;flex-shrink:0;
+    animation:gatePulse 1.6s infinite;
   }
-  .gate-header{
-    display:flex;align-items:center;gap:8px;padding:14px 16px;cursor:pointer;user-select:none;
+  @keyframes gatePulse{
+    0%{box-shadow:0 0 0 0 rgba(217,119,6,.55);}
+    70%{box-shadow:0 0 0 10px rgba(217,119,6,0);}
+    100%{box-shadow:0 0 0 0 rgba(217,119,6,0);}
   }
-  .gate-header .title{font-size:13px;font-weight:600;flex:1;}
-  .gate-header .caret{transition:.2s;color:var(--text-dim);}
-  .gate-panel.open .caret{transform:rotate(180deg);}
-  .gate-body{display:none;padding:0 16px 16px;}
-  .gate-panel.open .gate-body{display:block;}
-  .gate-panel.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
   .gate-prompt{font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.6;}
-  .gate-panel textarea{
-    width:100%;min-height:70px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+  #gateInput{
+    width:100%;min-height:90px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
     border-radius:8px;padding:10px;font-size:13px;resize:vertical;font-family:inherit;
   }
   .gate-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
-  .gate-waiting-badge{font-size:11px;color:var(--hirameki);background:var(--hirameki-soft);padding:2px 8px;border-radius:999px;}
+  .gate-waiting-badge{font-size:11px;color:var(--hirameki);background:var(--hirameki-soft);padding:2px 8px;border-radius:999px;margin-left:8px;}
+
+  /* ---------- 部署一覧:協議中/回答待ちラベル ---------- */
+  .dept-relation-label{font-size:10px;padding:1px 7px;border-radius:999px;margin-left:6px;font-weight:600;white-space:nowrap;}
+  .dept-relation-label.discussing{background:var(--hirameki-soft);color:var(--hirameki);}
+  .dept-relation-label.waiting{background:var(--accent-soft);color:var(--accent);}
+
+  /* ---------- 設定画面:アイコン/アバター選択ピッカー ---------- */
+  .icon-picker-box{
+    grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;padding:8px;
+    background:var(--panel-2);border:1px solid var(--border);border-radius:8px;margin-top:2px;
+  }
+  .icon-picker-item{
+    width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--panel);
+    cursor:pointer;padding:2px;overflow:hidden;flex-shrink:0;
+  }
+  .icon-picker-item:hover{border-color:var(--accent);}
+  .icon-picker-item img{width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;}
+  .dept-row-icon, .char-avatar-thumb{cursor:pointer;}
+  .char-avatar-thumb{width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid var(--border);}
+  .char-avatar-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 
   /* ---------- Start screen ---------- */
   .start-screen{
@@ -238,7 +256,7 @@
     padding:6px 8px;font-size:12px;width:100%;
   }
   .char-row{
-    display:grid;grid-template-columns:70px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center;
+    display:grid;grid-template-columns:40px 70px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center;
   }
   .char-row input{
     background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:6px;
@@ -294,7 +312,7 @@
 
     <div class="main-grid">
       <section class="panel">
-        <h2>部署一覧</h2>
+        <h2>部署一覧 <button class="gate-indicator-btn" id="gateIndicatorBtn" title="プロジェクトオーナーチェックが必要です">🚦</button></h2>
         <div id="deptDiagram"></div>
         <div id="deptList"></div>
       </section>
@@ -310,23 +328,20 @@
       </section>
     </div>
 
-    <div class="gate-panel" id="gatePanel">
-      <div class="gate-header" id="gateHeader">
-        <span>🚦</span>
-        <span class="title">人間ゲート</span>
-        <span id="gateWaitingBadge" style="display:none;" class="gate-waiting-badge">回答待ち</span>
-        <span class="caret">▾</span>
-      </div>
-      <div class="gate-body">
-        <div class="gate-prompt" id="gatePrompt">現在、人間ゲートでの確認待ちはありません。</div>
-        <textarea id="gateInput" placeholder="現場の生の反応・判断内容を入力してください" disabled></textarea>
-        <div class="gate-actions">
-          <button class="pill-btn" id="gateAutoBtn" disabled title="人間の回答を待たず、AIに想定回答を考えさせて進行を再開します"><img src="icons/ai_auto.png" alt="" style="width:16px;height:16px;border-radius:4px;">AIにお任せ</button>
-          <button class="pill-btn primary" id="gateSubmit" disabled>回答を送信して再開</button>
-        </div>
+  </div>
+
+  <!-- ============ プロジェクトオーナーチェック モーダル ============ -->
+  <div class="modal-overlay" id="gateModalOverlay">
+    <div class="modal">
+      <span class="modal-close" id="gateModalClose">✕</span>
+      <h3>🚦 プロジェクトオーナーチェック<span id="gateWaitingBadge" style="display:none;" class="gate-waiting-badge">回答待ち</span></h3>
+      <div class="gate-prompt" id="gatePrompt">現在、確認待ちの項目はありません。</div>
+      <textarea id="gateInput" placeholder="現場の生の反応・判断内容を入力してください" disabled></textarea>
+      <div class="gate-actions">
+        <button class="pill-btn" id="gateAutoBtn" disabled title="回答を待たず、AIに想定回答を考えさせて進行を再開します"><img src="icons/ai_auto.png" alt="" style="width:16px;height:16px;border-radius:4px;">AIにお任せ</button>
+        <button class="pill-btn primary" id="gateSubmit" disabled>回答を送信して再開</button>
       </div>
     </div>
-
   </div>
 
   <!-- ============ Settings modal ============ -->
@@ -382,12 +397,22 @@
      1. データモデル(設計書 2章に対応)
   ================================================================== */
   const DEPARTMENTS = [
-    { id:'qa',    name:'品質ゲートウェイ班', icon:'✅', description:'仕様確定・品質基準' },
-    { id:'sales', name:'営業部',           icon:'🤝', description:'現場の使い勝手・顧客反応' },
-    { id:'plan',  name:'業務企画部',       icon:'📋', description:'業務フロー設計・要件整理' },
-    { id:'sys',   name:'システム部門',     icon:'🖥', description:'システム実装・技術検証' },
-    { id:'sub',   name:'事務子会社',       icon:'🏢', description:'現場運用・実務担当' },
+    { id:'qa',    name:'品質ゲートウェイ班', icon:'✅', description:'仕様確定・品質基準', iconKey:'qa' },
+    { id:'sales', name:'営業部',           icon:'🤝', description:'現場の使い勝手・顧客反応', iconKey:'sales' },
+    { id:'plan',  name:'業務企画部',       icon:'📋', description:'業務フロー設計・要件整理', iconKey:'plan' },
+    { id:'sys',   name:'システム部門',     icon:'🖥', description:'システム実装・技術検証', iconKey:'sys' },
+    { id:'sub',   name:'事務子会社',       icon:'🏢', description:'現場運用・実務担当', iconKey:'sub' },
   ];
+
+  /* 設定画面のアイコン選択肢 */
+  const DEPT_ICON_CHOICES = [
+    { key:'qa',    label:'品質ゲートウェイ班' },
+    { key:'sales', label:'営業部' },
+    { key:'plan',  label:'業務企画部' },
+    { key:'sys',   label:'システム部門' },
+    { key:'sub',   label:'事務子会社' },
+  ];
+  const AVATAR_CHOICES = ['male1','male2','male3','male4','female1','female2','female3','female4'];
 
   let CHARACTERS = [
     { id:'sato',      name:'佐藤', deptId:'qa',    personality:'事なかれ主義', constraints:['基準を緩めた過去のクレーム事例'], earlyCompromiseBanned:true, avatarId:'male1' },
@@ -451,7 +476,7 @@
       from:'suzuki', text:'この仕様で営業現場に投げてみます。少々お待ちを…', expression:'neutral' },
 
     { type:'human-gate',
-      prompt:'営業現場にこの仕様をヒアリングしました。実際の反応・懸念点を入力してください(人間ゲート)。',
+      prompt:'営業現場にこの仕様をヒアリングしました。実際の反応・懸念点を入力してください(プロジェクトオーナーチェック)。',
       deptUpdates:[] },
 
     { deptUpdates:[{id:'sales',status:'done',task:'現場確認 完了',progress:100,collaborating:[]}],
@@ -518,10 +543,26 @@
 
   /* 部署アイコン:専用イラストがあれば画像、なければ仮の絵文字で表示 */
   function deptIconHtml(d){
-    if(d.hasIcon === false){
+    if(!d.iconKey){
       return `<span class="dept-icon-emoji">${d.icon || '🏢'}</span>`;
     }
-    return `<img src="icons/dept_${d.id}.png" alt="">`;
+    return `<img src="icons/dept_${d.iconKey}.png" alt="">`;
+  }
+
+  /* 現在この部署が「協議中」か「回答待ち/指示中」かを短いラベルで返す(要件F) */
+  function deptRelationLabel(deptId){
+    for(const r of state.relations){
+      if(r.type === 'discussing' && r.members.includes(deptId)){
+        return { text:'協議中', cls:'discussing' };
+      }
+      if(r.type === 'waiting' && r.to === deptId){
+        return { text:'回答待ち', cls:'waiting' };
+      }
+      if(r.type === 'waiting' && r.from === deptId){
+        return { text:'指示中', cls:'waiting' };
+      }
+    }
+    return null;
   }
 
   function renderDeptList(){
@@ -529,12 +570,14 @@
     wrap.innerHTML = '';
     DEPARTMENTS.forEach(d=>{
       const st = state.deptStatus[d.id];
+      const label = deptRelationLabel(d.id);
       const card = document.createElement('div');
       card.className = 'dept-card ' + (st.status==='idle' ? 'idle' : st.status==='done' ? 'done' : (st.collaborating.length ? 'collab' : ''));
       card.innerHTML = `
         <div class="dept-top">
           <span class="dept-icon">${deptIconHtml(d)}</span>
           <span class="dept-name">${d.name}</span>
+          ${label ? `<span class="dept-relation-label ${label.cls}">${label.text}</span>` : ''}
         </div>
         <div class="dept-task">${st.task}</div>
         <div class="progress-track"><div class="progress-fill" style="width:${st.progress}%"></div></div>
@@ -568,7 +611,7 @@
     }
     if(entry.kind === 'human-gate-answer'){
       div.className = 'msg system';
-      div.innerHTML = `<div class="msg-body"><div class="msg-bubble">🚦 人間ゲート回答:「${escapeHtml(entry.text)}」</div></div>`;
+      div.innerHTML = `<div class="msg-body"><div class="msg-bubble">🚦 プロジェクトオーナー回答:「${escapeHtml(entry.text)}」</div></div>`;
       return div;
     }
     if(entry.kind === 'human-gate-auto'){
@@ -690,9 +733,9 @@
       const ringColor = st.status==='done' ? 'var(--success)' : st.status==='working' ? 'var(--accent)' : 'var(--border)';
       const dash = st.status==='idle' ? 'stroke-dasharray="3 3"' : '';
       const isPm = d.id === state.pmDeptId;
-      const iconContent = d.hasIcon === false
+      const iconContent = !d.iconKey
         ? `<text x="${p.x}" y="${p.y+5}" text-anchor="middle" font-size="16">${d.icon||'🏢'}</text>`
-        : `<image href="icons/dept_${d.id}.png" x="${p.x-nodeR+3}" y="${p.y-nodeR+3}" width="${(nodeR-3)*2}" height="${(nodeR-3)*2}" clip-path="url(#clip-${d.id})" preserveAspectRatio="xMidYMid slice"/>`;
+        : `<image href="icons/dept_${d.iconKey}.png" x="${p.x-nodeR+3}" y="${p.y-nodeR+3}" width="${(nodeR-3)*2}" height="${(nodeR-3)*2}" clip-path="url(#clip-${d.id})" preserveAspectRatio="xMidYMid slice"/>`;
       nodesSvg += `
         <g>
           <clipPath id="clip-${d.id}"><circle cx="${p.x}" cy="${p.y}" r="${nodeR-3}"/></clipPath>
@@ -700,6 +743,7 @@
           ${iconContent}
           ${isPm ? `<text x="${p.x+nodeR-2}" y="${p.y-nodeR+4}" font-size="13" text-anchor="middle">👑</text>` : ''}
           <text x="${p.x}" y="${p.y+nodeR+13}" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">${escapeHtml(d.name)}</text>
+          ${(()=>{ const lbl = deptRelationLabel(d.id); return lbl ? `<text x="${p.x}" y="${p.y+nodeR+25}" text-anchor="middle" font-size="9" font-weight="700" fill="${lbl.cls==='discussing'?'var(--hirameki)':'var(--accent)'}">${lbl.text}</text>` : ''; })()}
         </g>`;
     });
 
@@ -851,12 +895,12 @@
     renderAll();
   }
 
-  /* ---------- 人間ゲート ---------- */
+  /* ---------- プロジェクトオーナーチェック(旧:人間ゲート) ---------- */
   function openHumanGate(promptText){
     state.awaitingGate = true;
     clearTimeout(state.timerId);
-    const panel = $('gatePanel');
-    panel.classList.add('open','active');
+    // モーダルは自動で開かず、部署一覧のアイコンをポップアップ表示するだけにとどめる(要件G)
+    $('gateIndicatorBtn').style.display = 'flex';
     $('gateWaitingBadge').style.display = 'inline-block';
     $('gatePrompt').textContent = promptText;
     const input = $('gateInput'); input.disabled = false; input.value = '';
@@ -869,18 +913,19 @@
     if(!val){ $('gateInput').focus(); return; }
     state.log.push({ kind: kind || 'human-gate-answer', text: val });
     state.awaitingGate = false;
-    $('gatePanel').classList.remove('active');
+    $('gateModalOverlay').classList.remove('open');
+    $('gateIndicatorBtn').style.display = 'none';
     $('gateWaitingBadge').style.display = 'none';
-    $('gatePrompt').textContent = '現在、人間ゲートでの確認待ちはありません。';
+    $('gatePrompt').textContent = '現在、確認待ちの項目はありません。';
     $('gateInput').disabled = true; $('gateInput').value = '';
     $('gateSubmit').disabled = true;
     $('gateAutoBtn').disabled = true;
-    state.stepIndex++; // human-gateイベントを消化
+    state.stepIndex++; // プロジェクトオーナーチェックのイベントを消化
     renderAll();
     scheduleNext(600);
   }
 
-  /* 段階1向けスタブ:人間ゲートの想定回答をAIに考えさせる
+  /* 段階1向けスタブ:プロジェクトオーナーチェックの想定回答をAIに考えさせる
      (段階2でAnthropic APIに「この問いに対する妥当な回答」を生成させる差し込みポイント) */
   async function callAIForGateAnswer(promptText){
     return '(AIによる想定回答)現場の反応は概ね好意的です。ただし、スキャン時に文字がかすれるケースがあるとの声があり、解像度設定の見直しを求められています。';
@@ -905,6 +950,20 @@
     sel.value = state.pmDeptId;
   }
 
+  /* 行の中に、クリックで開閉するアイコン選択パレットを表示する共通処理 */
+  function toggleInlinePicker(row, choices, onPick){
+    const existing = row.querySelector('.icon-picker-box');
+    if(existing){ existing.remove(); return; }
+    document.querySelectorAll('.icon-picker-box').forEach(el=>el.remove());
+    const box = document.createElement('div');
+    box.className = 'icon-picker-box';
+    box.innerHTML = choices.map(c=>`<button type="button" class="icon-picker-item" data-key="${c.key}" title="${c.label||c.key}"><img src="${c.src}" alt=""></button>`).join('');
+    row.appendChild(box);
+    box.querySelectorAll('.icon-picker-item').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ onPick(btn.dataset.key); box.remove(); });
+    });
+  }
+
   function renderDeptEditList(){
     const wrap = $('deptEditList');
     wrap.innerHTML = '';
@@ -912,10 +971,18 @@
       const row = document.createElement('div');
       row.className = 'dept-row';
       row.innerHTML = `
-        <span class="dept-row-icon">${deptIconHtml(d)}</span>
+        <span class="dept-row-icon" title="クリックしてアイコンを変更">${deptIconHtml(d)}</span>
         <input type="text" value="${d.name}" data-field="name" data-idx="${idx}" placeholder="部署名">
         <input type="text" value="${d.description}" data-field="description" data-idx="${idx}" placeholder="役割の説明">
       `;
+      row.querySelector('.dept-row-icon').addEventListener('click', ()=>{
+        const choices = DEPT_ICON_CHOICES.map(c=>({ key:c.key, label:c.label, src:`icons/dept_${c.key}.png` }));
+        toggleInlinePicker(row, choices, key=>{
+          DEPARTMENTS[idx].iconKey = key;
+          renderDeptEditList();
+          renderAll();
+        });
+      });
       wrap.appendChild(row);
     });
     wrap.querySelectorAll('input').forEach(inp=>{
@@ -932,7 +999,7 @@
   function addDepartment(){
     extraDeptCount++;
     const id = 'extra' + extraDeptCount;
-    const newDept = { id, name:'新しい部署'+extraDeptCount, icon:'🏢', description:'(役割を入力してください)', hasIcon:false };
+    const newDept = { id, name:'新しい部署'+extraDeptCount, icon:'🏢', description:'(役割を入力してください)', iconKey:null };
     DEPARTMENTS.push(newDept);
     state.deptStatus[id] = { status:'idle', task:'待機中', progress:0, collaborating:[] };
     renderDeptEditList();
@@ -946,11 +1013,20 @@
       const row = document.createElement('div');
       row.className = 'char-row';
       row.innerHTML = `
+        <span class="char-avatar-thumb" title="クリックして顔アイコンを変更"><img src="avatars/${c.avatarId}_neutral.png" alt=""></span>
         <input type="text" value="${c.name}" data-field="name" data-idx="${idx}">
         <span class="dept-badge">${deptById(c.deptId).icon} ${deptById(c.deptId).name}</span>
         <input type="text" value="${c.personality}" data-field="personality" data-idx="${idx}" placeholder="性格">
         <input type="text" value="${c.constraints.join(' / ')}" data-field="constraints" data-idx="${idx}" placeholder="譲れない制約(/区切り)">
       `;
+      row.querySelector('.char-avatar-thumb').addEventListener('click', ()=>{
+        const choices = AVATAR_CHOICES.map(key=>({ key, label:key, src:`avatars/${key}_neutral.png` }));
+        toggleInlinePicker(row, choices, key=>{
+          CHARACTERS[idx].avatarId = key;
+          renderCharEditList();
+          renderAll();
+        });
+      });
       wrap.appendChild(row);
     });
     wrap.querySelectorAll('input').forEach(inp=>{
@@ -1003,15 +1079,20 @@
     state.log = []; state.artifacts = []; state.stepIndex = 0; state.running = false; state.awaitingGate = false;
     state.relations = [];
     state.project.status = '待機中';
-    $('gatePanel').classList.remove('open','active');
+    $('gateModalOverlay').classList.remove('open');
+    $('gateIndicatorBtn').style.display = 'none';
     $('gateWaitingBadge').style.display = 'none';
-    $('gatePrompt').textContent = '現在、人間ゲートでの確認待ちはありません。';
+    $('gatePrompt').textContent = '現在、確認待ちの項目はありません。';
     $('gateInput').disabled = true; $('gateInput').value = '';
     $('gateSubmit').disabled = true; $('gateAutoBtn').disabled = true;
     renderAll();
   });
 
-  $('gateHeader').addEventListener('click', ()=> $('gatePanel').classList.toggle('open'));
+  $('gateIndicatorBtn').addEventListener('click', ()=> $('gateModalOverlay').classList.add('open'));
+  $('gateModalClose').addEventListener('click', ()=> $('gateModalOverlay').classList.remove('open'));
+  $('gateModalOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'gateModalOverlay') $('gateModalOverlay').classList.remove('open');
+  });
   $('gateSubmit').addEventListener('click', ()=> submitHumanGate('human-gate-answer'));
   $('gateAutoBtn').addEventListener('click', useAIForGate);
 
