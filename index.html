@@ -271,6 +271,42 @@
   .folder-note{font-size:11px;color:var(--text-faint);margin:-10px 0 16px;line-height:1.6;}
   .field textarea{min-height:70px;resize:vertical;}
 
+  /* ---------- ランチャー画面(TOP:新規/過去から再開) ---------- */
+  .launcher-wrap{max-width:640px;margin:40px auto;padding:0 16px;}
+  .launcher-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px;}
+  @media (max-width:640px){.launcher-cards{grid-template-columns:1fr;}}
+  .launcher-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px 20px;text-align:center;box-shadow:0 12px 28px rgba(30,42,58,.06);
+  }
+  .launcher-card-icon{font-size:30px;margin-bottom:8px;}
+  .launcher-card h3{font-size:15px;margin:0 0 6px;}
+  .launcher-card p{font-size:12px;color:var(--text-dim);margin:0 0 16px;line-height:1.6;min-height:34px;}
+  .launcher-card button{width:100%;justify-content:center;}
+  .quick-resume-card{
+    margin-top:24px;background:var(--accent-soft);border:1px solid rgba(96,165,250,.3);
+    border-radius:var(--radius);padding:16px 18px;
+  }
+  .quick-resume-label{font-size:11px;font-weight:700;color:var(--accent-2);margin-bottom:8px;}
+  .quick-resume-title{font-size:13px;font-weight:600;margin-bottom:4px;}
+  .quick-resume-sub{font-size:11px;color:var(--text-dim);margin-bottom:12px;}
+  .quick-resume-card button{width:100%;justify-content:center;}
+  .back-link{display:inline-block;font-size:12px;color:var(--text-dim);cursor:pointer;margin-bottom:14px;}
+  .back-link:hover{color:var(--accent);}
+  .drill-title{font-size:16px;margin:0 0 16px;}
+  .project-list, .session-list{display:flex;flex-direction:column;gap:10px;}
+  .project-card, .session-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;
+    cursor:pointer;transition:.15s;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .project-card:hover, .session-card:hover{border-color:var(--accent);background:var(--accent-soft);}
+  .project-card-name, .session-card-title{font-size:13px;font-weight:600;}
+  .project-card-count, .session-card-sub{font-size:11px;color:var(--text-dim);white-space:nowrap;flex-shrink:0;}
+  .session-card{flex-direction:column;align-items:flex-start;gap:4px;}
+  .import-row{display:flex;justify-content:flex-end;margin-bottom:8px;}
+  .export-icon{font-size:14px;color:var(--text-dim);cursor:pointer;flex-shrink:0;padding:4px;}
+  .export-icon:hover{color:var(--accent);}
+
   /* ---------- Modal ---------- */
   .modal-overlay{
     position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
@@ -309,24 +345,34 @@
 <body>
 <div class="app">
 
-  <!-- ============ Start screen(ORCHESTRA) ============ -->
-  <div class="start-screen" id="startScreen">
+  <!-- ============ ランチャー(TOP)画面 ============ -->
+  <div id="launcherScreen"></div>
+
+  <!-- ============ 過去のプロジェクトから再開:Step1 プロジェクト選択 ============ -->
+  <div id="resumeProjectsScreen" style="display:none;"></div>
+
+  <!-- ============ 過去のプロジェクトから再開:Step2 テーマ(セッション)選択 ============ -->
+  <div id="resumeSessionsScreen" style="display:none;"></div>
+
+  <!-- ============ 新規プロジェクト/新規テーマ 入力フォーム ============ -->
+  <div class="start-screen" id="startScreen" style="display:none;">
     <div class="start-logo-area">
+      <a class="back-link" id="startFormBack">← 戻る</a>
       <h1 class="start-logo"><img src="icons/app_logo.png" alt="" onerror="this.style.display='none'">ORCHESTRA</h1>
-      <p class="start-tagline">チームの協調を、AIの力で最適化。</p>
+      <p class="start-tagline" id="startFormTitle">チームの協調を、AIの力で最適化。</p>
     </div>
     <div class="start-hero">
       <img src="icons/app_hero.png" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
       <div class="hero-fallback" style="display:none;">🏢 部署(AI)たちが単独または連携しながら成果物を作り上げます</div>
     </div>
     <div class="start-form">
-      <div class="field">
+      <div class="field" id="fieldTitle">
         <label>プロジェクト名</label>
-        <input type="text" id="inputTitle" placeholder="例: 紙帳票回覧プロセスの電子化">
+        <input type="text" id="inputTitle" placeholder="例: 新商品のプロモーション企画立案">
       </div>
       <div class="field">
         <label>概要</label>
-        <textarea id="inputOverview" placeholder="例: スキャンした帳票を既存の承認WFにつなげたい"></textarea>
+        <textarea id="inputOverview" placeholder="例: 新商品の認知拡大に向けた企画を立てたい"></textarea>
       </div>
       <div class="field">
         <label>詳細(任意)</label>
@@ -540,6 +586,80 @@
   DEPARTMENTS.forEach(d=>{
     state.deptStatus[d.id] = { status:'idle', task:'待機中', progress:0, collaborating:[] };
   });
+
+  /* ==================================================================
+     1.5 プロジェクト/セッションの永続化
+     「プロジェクト(親)」の中に複数の「セッション/テーマ(子)」がぶら下がる構造。
+     ブラウザのlocalStorageに保存し、次回訪問時に一覧・再開できるようにする。
+  ================================================================== */
+  const STORAGE_KEY = 'orchestra_projects_v1';
+
+  function loadProjects(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ console.warn('保存済みプロジェクトの読み込みに失敗しました', e); return []; }
+  }
+  function saveProjects(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); }
+    catch(e){ console.warn('プロジェクトの保存に失敗しました(ブラウザのストレージ容量超過の可能性があります)', e); }
+  }
+  let projects = loadProjects();
+  let activeProjectId = null;
+  let activeSessionId = null;
+  let pendingProjectId = null; // 新規テーマ作成時:追加先の既存プロジェクトID(nullなら完全新規プロジェクト)
+
+  function findProject(id){ return projects.find(p=>p.id===id); }
+  function findSession(projectId, sessionId){
+    const p = findProject(projectId);
+    return p && p.sessions.find(s=>s.id===sessionId);
+  }
+
+  /* dirHandle/timerIdはシリアライズ不可のため除いてスナップショットを取る */
+  function snapshotState(){
+    const { dirHandle, timerId, ...rest } = state;
+    return JSON.parse(JSON.stringify(rest));
+  }
+  function restoreStateFromSnapshot(snap){
+    state = Object.assign(JSON.parse(JSON.stringify(snap)), { dirHandle:null, timerId:null, running:false });
+  }
+
+  /* 段階1向けスタブ:セッションの要約・タイトルをAIに生成させる「仮想インデックス」
+     (段階2でAnthropic APIに実際の要約を生成させる差し込みポイント) */
+  function stubGenerateIndex(){
+    const lastHirameki = [...state.log].reverse().find(e=>e.kind==='hirameki');
+    if(lastHirameki) return { summary: `💡 ${lastHirameki.title}: ${lastHirameki.text}` };
+    if(state.project.status === '完了') return { summary:'完了済み' };
+    return { summary: `進行中(${state.stepIndex}/${SCRIPT_TEMPLATE.length}ステップ)` };
+  }
+
+  /* ログ更新・成果物生成のたびに呼ばれ、現在のセッションを自動保存する */
+  function persistActiveSession(){
+    if(!activeProjectId || !activeSessionId) return;
+    const p = findProject(activeProjectId);
+    const s = p && findSession(activeProjectId, activeSessionId);
+    if(!p || !s) return;
+    s.snapshot = snapshotState();
+    s.summary = stubGenerateIndex().summary;
+    s.updatedAt = Date.now();
+    p.updatedAt = Date.now();
+    saveProjects();
+  }
+
+  function getMostRecentSession(){
+    let best = null;
+    projects.forEach(p=>{
+      p.sessions.forEach(s=>{
+        if(!best || s.updatedAt > best.session.updatedAt){ best = { project:p, session:s }; }
+      });
+    });
+    return best;
+  }
+
+  function formatDate(ts){
+    const d = new Date(ts);
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
 
   /* ==================================================================
      2. 段階1向けスタブ:callDepartmentAI
@@ -786,6 +906,7 @@
     renderLog();
     renderArtifacts();
     $('playBtn').textContent = state.running ? '⏸' : '▶';
+    persistActiveSession();
   }
 
   /* 部署間の関係図(階層なし・現在の「指示待ち」「協議中」を可視化) */
@@ -1142,6 +1263,229 @@
   }
 
   /* ==================================================================
+     6.5 画面遷移(ランチャー/過去から再開/新規フォーム/ダッシュボード)
+  ================================================================== */
+  function showScreen(name){
+    ['launcherScreen','resumeProjectsScreen','resumeSessionsScreen','startScreen','dashboard'].forEach(id=>{
+      $(id).style.display = (id===name) ? 'block' : 'none';
+    });
+  }
+
+  function renderLauncher(){
+    const recent = getMostRecentSession();
+    $('launcherScreen').innerHTML = `
+      <div class="launcher-wrap">
+        <div class="start-logo-area">
+          <h1 class="start-logo"><img src="icons/app_logo.png" alt="" onerror="this.style.display='none'">ORCHESTRA</h1>
+          <p class="start-tagline">チームの協調を、AIの力で最適化。</p>
+        </div>
+        <div class="launcher-cards">
+          <div class="launcher-card">
+            <div class="launcher-card-icon">✨</div>
+            <h3>新しくプロジェクトを始める</h3>
+            <p>完全に新しいテーマでAIチームを立ち上げます</p>
+            <button class="pill-btn primary" id="newProjectCardBtn">🚀 新規作成へ</button>
+          </div>
+          <div class="launcher-card">
+            <div class="launcher-card-icon">🔄</div>
+            <h3>過去のプロジェクトから再開</h3>
+            <p>以前の続きや、同じプロジェクトの新しいテーマを検討します</p>
+            <button class="pill-btn" id="resumeCardBtn" ${projects.length===0?'disabled':''}>📂 履歴・一覧を見る</button>
+          </div>
+        </div>
+        ${recent ? `
+          <div class="quick-resume-card">
+            <div class="quick-resume-label">⚡ クイック再開(直近の作業)</div>
+            <div class="quick-resume-title">📌 ${escapeHtml(recent.project.title)} &gt; 📄 ${escapeHtml(recent.session.title)}</div>
+            <div class="quick-resume-sub">最終更新: ${formatDate(recent.session.updatedAt)}${recent.session.summary ? ' ｜ '+escapeHtml(recent.session.summary) : ''}</div>
+            <button class="pill-btn primary" id="quickResumeBtn">➔ この続きからすぐ再開</button>
+          </div>` : ''}
+      </div>
+    `;
+    $('newProjectCardBtn').addEventListener('click', startNewProjectFlow);
+    if(projects.length){
+      $('resumeCardBtn').addEventListener('click', ()=>{ renderProjectList(); showScreen('resumeProjectsScreen'); });
+    }
+    if(recent){
+      $('quickResumeBtn').addEventListener('click', ()=> resumeSession(recent.project.id, recent.session.id));
+    }
+  }
+
+  function renderProjectList(){
+    const sorted = projects.slice().sort((a,b)=>b.updatedAt-a.updatedAt);
+    $('resumeProjectsScreen').innerHTML = `
+      <div class="launcher-wrap">
+        <a class="back-link" id="backToLauncher">← 戻る</a>
+        <div class="import-row">
+          <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+          <button type="button" class="pill-btn" id="importBtn">📂 プロジェクトをインポート</button>
+        </div>
+        <h2 class="drill-title">📂 プロジェクトを選択してください</h2>
+        <div class="project-list">
+          ${sorted.map(p=>`
+            <div class="project-card" data-id="${p.id}">
+              <span class="project-card-name">📁 ${escapeHtml(p.title)}</span>
+              <span class="project-card-count">
+                テーマ数: ${p.sessions.length}件
+                <span class="export-icon" data-export="${p.id}" title="このプロジェクトをJSONでエクスポート">⬇</span>
+              </span>
+            </div>
+          `).join('') || '<div class="empty-hint">まだプロジェクトがありません</div>'}
+        </div>
+      </div>
+    `;
+    $('backToLauncher').addEventListener('click', ()=>{ renderLauncher(); showScreen('launcherScreen'); });
+    $('importBtn').addEventListener('click', ()=> $('importFileInput').click());
+    $('importFileInput').addEventListener('change', e=>{
+      const file = e.target.files[0];
+      if(file) importProjectFile(file);
+      e.target.value = '';
+    });
+    document.querySelectorAll('.project-card').forEach(el=>{
+      el.addEventListener('click', e=>{
+        if(e.target.dataset.export) return; // エクスポートアイコン側で処理
+        renderSessionList(el.dataset.id);
+        showScreen('resumeSessionsScreen');
+      });
+    });
+    document.querySelectorAll('.export-icon').forEach(el=>{
+      el.addEventListener('click', e=>{ e.stopPropagation(); exportProject(el.dataset.export); });
+    });
+  }
+
+  function renderSessionList(projectId){
+    const p = findProject(projectId);
+    const sorted = p.sessions.slice().sort((a,b)=>b.updatedAt-a.updatedAt);
+    $('resumeSessionsScreen').innerHTML = `
+      <div class="launcher-wrap">
+        <a class="back-link" id="backToProjects">← プロジェクト一覧へ戻る</a>
+        <h2 class="drill-title">📁 ${escapeHtml(p.title)}</h2>
+        <div class="session-list">
+          ${sorted.map(s=>`
+            <div class="session-card" data-id="${s.id}">
+              <span class="session-card-title">📄 ${escapeHtml(s.title)}${s.snapshot && s.snapshot.project.status==='完了' ? '(完了)' : '(前回の続き)'}</span>
+              <span class="session-card-sub">${formatDate(s.updatedAt)}${s.summary ? ' ｜ '+escapeHtml(s.summary) : ''}</span>
+            </div>
+          `).join('')}
+        </div>
+        <button class="pill-btn primary" id="newThemeBtn" style="margin-top:14px;width:100%;justify-content:center;">＋ このプロジェクトで新しいテーマを始める</button>
+      </div>
+    `;
+    $('backToProjects').addEventListener('click', ()=>{ renderProjectList(); showScreen('resumeProjectsScreen'); });
+    document.querySelectorAll('.session-card').forEach(el=>{
+      el.addEventListener('click', ()=> resumeSession(projectId, el.dataset.id));
+    });
+    $('newThemeBtn').addEventListener('click', ()=> startNewThemeFlow(projectId));
+  }
+
+  function startNewProjectFlow(){
+    pendingProjectId = null;
+    $('inputTitle').value = ''; $('inputOverview').value = ''; $('inputDetail').value = '';
+    $('fieldTitle').style.display = '';
+    $('startFormTitle').textContent = '✨ 新しいプロジェクトを始める';
+    showScreen('startScreen');
+  }
+
+  function startNewThemeFlow(projectId){
+    pendingProjectId = projectId;
+    const p = findProject(projectId);
+    $('inputTitle').value = p.title;
+    $('inputOverview').value = ''; $('inputDetail').value = '';
+    $('fieldTitle').style.display = 'none'; // プロジェクト名は既存のものを引き継ぐため非表示
+    $('startFormTitle').textContent = `📁 ${p.title} ｜ 新しいテーマを始める`;
+    showScreen('startScreen');
+  }
+
+  $('startFormBack').addEventListener('click', ()=>{ renderLauncher(); showScreen('launcherScreen'); });
+
+  function resumeSession(projectId, sessionId){
+    const s = findSession(projectId, sessionId);
+    if(!s || !s.snapshot) return;
+    activeProjectId = projectId;
+    activeSessionId = sessionId;
+    restoreStateFromSnapshot(s.snapshot);
+    clearTimeout(state.timerId);
+    $('projectTitle').textContent = state.project.title;
+    showScreen('dashboard');
+    renderAll();
+  }
+
+  /* 現在のシミュレーション状態を初期状態に戻す(リセットボタン・新規セッション開始の両方から呼ぶ) */
+  function resetSimulationState(){
+    clearTimeout(state.timerId);
+    DEPARTMENTS.forEach(d=>{ state.deptStatus[d.id] = { status:'idle', task:'待機中', progress:0, collaborating:[] }; });
+    state.stats = { active:0, exchange:0, artifacts:0, hirameki:0 };
+    state.log = []; state.artifacts = []; state.stepIndex = 0; state.running = false; state.awaitingGate = false;
+    state.awaitingReport = false;
+    state.relations = [];
+    SCRIPT.length = 0;
+    SCRIPT.push(...JSON.parse(JSON.stringify(SCRIPT_TEMPLATE))); // 追加指示で挿入された分を破棄して元に戻す
+    $('gateModalOverlay').classList.remove('open');
+    $('gateIndicatorBtn').style.display = 'none';
+    $('gateWaitingBadge').style.display = 'none';
+    $('gatePrompt').textContent = '現在、確認待ちの項目はありません。';
+    $('gateInput').disabled = true; $('gateInput').value = '';
+    $('gateSubmit').disabled = true; $('gateAutoBtn').disabled = true;
+    $('reportModalOverlay').classList.remove('open');
+    $('reportIndicatorBtn').style.display = 'none';
+  }
+
+  /* 新規プロジェクト、または既存プロジェクトへの新規テーマとして、セッションを開始する */
+  function beginSession(title, overview, detail){
+    const now = Date.now();
+    let projectId = pendingProjectId;
+    if(!projectId){
+      const p = { id:'proj_'+now, title, createdAt:now, updatedAt:now, sessions:[] };
+      projects.push(p);
+      projectId = p.id;
+    }
+    const project = findProject(projectId);
+    const sessionTitle = pendingProjectId ? (overview || title) : title;
+    const session = { id:'sess_'+now, title:sessionTitle, summary:'', updatedAt:now, snapshot:null };
+    project.sessions.push(session);
+    activeProjectId = projectId;
+    activeSessionId = session.id;
+
+    resetSimulationState();
+    state.project.title = project.title;
+    state.project.overview = overview;
+    state.project.detail = detail;
+    state.project.status = '待機中';
+
+    $('projectTitle').textContent = project.title;
+    showScreen('dashboard');
+    renderAll();
+  }
+
+  function exportProject(projectId){
+    const p = findProject(projectId);
+    if(!p) return;
+    const blob = new Blob([JSON.stringify(p, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${p.title}.orchestra.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importProjectFile(file){
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const p = JSON.parse(reader.result);
+        if(!p || !Array.isArray(p.sessions)) throw new Error('invalid format');
+        p.id = 'proj_' + Date.now(); // IDの衝突を避けるため採番し直す
+        projects.push(p);
+        saveProjects();
+        renderProjectList();
+      }catch(e){
+        alert('読み込みに失敗しました。ORCHESTRAからエクスポートしたJSONファイルか確認してください。');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ==================================================================
      7. 設定モーダル(部署/キャラクター編集・APIキー・フォルダ)
   ================================================================== */
   function renderPmDeptSelect(){
@@ -1259,14 +1603,7 @@
     const title = $('inputTitle').value.trim() || '無題のプロジェクト';
     const overview = $('inputOverview').value.trim();
     const detail = $('inputDetail').value.trim();
-    state.project.title = title;
-    state.project.overview = overview;
-    state.project.detail = detail;
-    state.project.status = '待機中';
-    $('projectTitle').textContent = title;
-    $('startScreen').style.display = 'none';
-    $('dashboard').style.display = 'block';
-    renderAll();
+    beginSession(title, overview, detail);
   });
   $('startFolderBtn').addEventListener('click', chooseFolder);
 
@@ -1276,23 +1613,8 @@
 
   $('resetBtn').addEventListener('click', ()=>{
     if(!confirm('進行中のログ・成果物をリセットして最初からやり直します。よろしいですか?')) return;
-    clearTimeout(state.timerId);
-    DEPARTMENTS.forEach(d=>{ state.deptStatus[d.id] = { status:'idle', task:'待機中', progress:0, collaborating:[] }; });
-    state.stats = { active:0, exchange:0, artifacts:0, hirameki:0 };
-    state.log = []; state.artifacts = []; state.stepIndex = 0; state.running = false; state.awaitingGate = false;
-    state.awaitingReport = false;
-    state.relations = [];
+    resetSimulationState();
     state.project.status = '待機中';
-    SCRIPT.length = 0;
-    SCRIPT.push(...JSON.parse(JSON.stringify(SCRIPT_TEMPLATE))); // 追加指示で挿入された分を破棄して元に戻す
-    $('gateModalOverlay').classList.remove('open');
-    $('gateIndicatorBtn').style.display = 'none';
-    $('gateWaitingBadge').style.display = 'none';
-    $('gatePrompt').textContent = '現在、確認待ちの項目はありません。';
-    $('gateInput').disabled = true; $('gateInput').value = '';
-    $('gateSubmit').disabled = true; $('gateAutoBtn').disabled = true;
-    $('reportModalOverlay').classList.remove('open');
-    $('reportIndicatorBtn').style.display = 'none';
     renderAll();
   });
 
@@ -1350,7 +1672,8 @@
     if(e.target.id === 'settingsOverlay') $('settingsOverlay').classList.remove('open');
   });
 
-  renderAll();
+  renderLauncher();
+  showScreen('launcherScreen');
 })();
 </script>
 </body>
