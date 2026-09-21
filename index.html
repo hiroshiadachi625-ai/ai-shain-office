@@ -295,6 +295,7 @@
     <div class="main-grid">
       <section class="panel">
         <h2>部署一覧</h2>
+        <div id="deptDiagram"></div>
         <div id="deptList"></div>
       </section>
 
@@ -344,6 +345,12 @@
         <h4>成果物の保存先フォルダ</h4>
         <button class="pill-btn" id="settingsFolderBtn">📁 フォルダを選択</button>
         <span class="note" id="folderStatus">未選択(未選択の場合は個別ダウンロードになります)</span>
+      </div>
+
+      <div class="modal-section">
+        <h4>PM(進行役)部署</h4>
+        <select id="pmDeptSelect" style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px;"></select>
+        <div class="note">部署間に上下関係はありませんが、進行を取りまとめる役割として1部署をPMに指定できます。部署一覧の図に王冠マークで表示されます。</div>
       </div>
 
       <div class="modal-section">
@@ -406,6 +413,8 @@
     awaitingGate:false,
     dirHandle:null,
     timerId:null,
+    pmDeptId:'qa',   // PM(進行役)に設定されている部署。階層ではなく役割ラベル
+    relations:[],    // 現在の部署間の関係。{type:'waiting',from,to} = 指示して回答待ち / {type:'discussing',members:[...]} = 協議中
   };
 
   DEPARTMENTS.forEach(d=>{
@@ -435,7 +444,8 @@
 
     { deptUpdates:[{id:'qa',status:'done',task:'仕様確定 完了',progress:100}],
       from:'sato', text:'仕様書を格納しました。営業部門、使い勝手の確認をお願いします。', expression:'neutral',
-      artifact:{deptId:'qa', filename:'仕様書_v1.pdf'} },
+      artifact:{deptId:'qa', filename:'仕様書_v1.pdf'},
+      relations:[{type:'waiting', from:'qa', to:'sales'}] },
 
     { deptUpdates:[{id:'sales',status:'working',task:'現場の使い勝手を確認中',progress:30,collaborating:['qa']}],
       from:'suzuki', text:'この仕様で営業現場に投げてみます。少々お待ちを…', expression:'neutral' },
@@ -445,19 +455,22 @@
       deptUpdates:[] },
 
     { deptUpdates:[{id:'sales',status:'done',task:'現場確認 完了',progress:100,collaborating:[]}],
-      from:'suzuki', text:'現場から実際の声をもらいました。', expression:'neutral' },
+      from:'suzuki', text:'現場から実際の声をもらいました。', expression:'neutral',
+      relations:[] },
 
     { deptUpdates:[
         {id:'plan',status:'working',task:'業務フロー設計中',progress:20,collaborating:['sys']},
         {id:'sys',status:'working',task:'技術検証中',progress:20,collaborating:['plan']}
       ],
-      from:'tanaka', text:'業務企画としては、承認フローに例外処理を追加したいです。', expression:'serious' },
+      from:'tanaka', text:'業務企画としては、承認フローに例外処理を追加したいです。', expression:'serious',
+      relations:[{type:'discussing', members:['plan','sys']}] },
 
     { deptUpdates:[],
       from:'takahashi', text:'工数的にAPI連携は厳しいです。例外処理は別バッチにしましょう。', conflictPair:['plan','sys'], expression:'troubled' },
 
     { deptUpdates:[{id:'sub',status:'working',task:'運用可否を検討中',progress:30,collaborating:['plan','sys']}],
-      from:'tanaka', text:'でも現場運用の話なんですよ。事務子会社が回せないと意味がありません。', conflictPair:['plan','sys'], expression:'serious' },
+      from:'tanaka', text:'でも現場運用の話なんですよ。事務子会社が回せないと意味がありません。', conflictPair:['plan','sys'], expression:'serious',
+      relations:[{type:'discussing', members:['plan','sys','sub']}] },
 
     { deptUpdates:[],
       from:'ito', text:'正直、今のままの運用手順だと私たちの人員では厳しいです。', conflictPair:['plan','sub'], expression:'troubled' },
@@ -474,7 +487,8 @@
       title:'統合案',
       text:'ミドルウェア層を挟むことで、業務企画の例外要件・システムの工数制約・事務子会社の運用負荷を同時に満たす代替案を提示。',
       authors:['tanaka','takahashi'],
-      artifact:{deptId:'sys', filename:'ミドルウェア設計案_v1.pdf'} },
+      artifact:{deptId:'sys', filename:'ミドルウェア設計案_v1.pdf'},
+      relations:[] },
 
     { type:'system', deptUpdates:[],
       text:'全部署が合意しました。プロトタイプを自動生成します。',
@@ -624,10 +638,87 @@
   function renderAll(){
     renderStats();
     renderStatusBadge();
+    renderDeptDiagram();
     renderDeptList();
     renderLog();
     renderArtifacts();
     $('playBtn').textContent = state.running ? '⏸' : '▶';
+  }
+
+  /* 部署間の関係図(階層なし・現在の「指示待ち」「協議中」を可視化) */
+  function renderDeptDiagram(){
+    const wrap = $('deptDiagram');
+    const depts = DEPARTMENTS;
+    const n = depts.length;
+    const size = 260;
+    const cx = size/2, cy = size/2;
+    const R = size/2 - 46;
+    const nodeR = 22;
+
+    const pos = {};
+    depts.forEach((d,i)=>{
+      const angle = -Math.PI/2 + i*(2*Math.PI/n);
+      pos[d.id] = { x: cx + R*Math.cos(angle), y: cy + R*Math.sin(angle) };
+    });
+
+    let edgesSvg = '';
+    state.relations.filter(r=>r.type==='discussing').forEach(r=>{
+      const members = r.members;
+      for(let i=0;i<members.length;i++){
+        for(let j=i+1;j<members.length;j++){
+          const a = pos[members[i]], b = pos[members[j]];
+          if(!a || !b) continue;
+          edgesSvg += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--hirameki)" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round"/>`;
+        }
+      }
+    });
+    state.relations.filter(r=>r.type==='waiting').forEach(r=>{
+      const a = pos[r.from], b = pos[r.to];
+      if(!a || !b) return;
+      const dx = b.x-a.x, dy = b.y-a.y;
+      const dist = Math.hypot(dx,dy) || 1;
+      const ux = dx/dist, uy = dy/dist;
+      const startX = a.x + ux*nodeR, startY = a.y + uy*nodeR;
+      const endX = b.x - ux*(nodeR+6), endY = b.y - uy*(nodeR+6);
+      edgesSvg += `<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#arrowhead)" stroke-linecap="round"/>`;
+    });
+
+    let nodesSvg = '';
+    depts.forEach(d=>{
+      const p = pos[d.id];
+      const st = state.deptStatus[d.id] || {status:'idle'};
+      const ringColor = st.status==='done' ? 'var(--success)' : st.status==='working' ? 'var(--accent)' : 'var(--border)';
+      const dash = st.status==='idle' ? 'stroke-dasharray="3 3"' : '';
+      const isPm = d.id === state.pmDeptId;
+      const iconContent = d.hasIcon === false
+        ? `<text x="${p.x}" y="${p.y+5}" text-anchor="middle" font-size="16">${d.icon||'🏢'}</text>`
+        : `<image href="icons/dept_${d.id}.png" x="${p.x-nodeR+3}" y="${p.y-nodeR+3}" width="${(nodeR-3)*2}" height="${(nodeR-3)*2}" clip-path="url(#clip-${d.id})" preserveAspectRatio="xMidYMid slice"/>`;
+      nodesSvg += `
+        <g>
+          <clipPath id="clip-${d.id}"><circle cx="${p.x}" cy="${p.y}" r="${nodeR-3}"/></clipPath>
+          <circle cx="${p.x}" cy="${p.y}" r="${nodeR}" fill="var(--panel)" stroke="${ringColor}" stroke-width="2.5" ${dash}/>
+          ${iconContent}
+          ${isPm ? `<text x="${p.x+nodeR-2}" y="${p.y-nodeR+4}" font-size="13" text-anchor="middle">👑</text>` : ''}
+          <text x="${p.x}" y="${p.y+nodeR+13}" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">${escapeHtml(d.name)}</text>
+        </g>`;
+    });
+
+    wrap.innerHTML = `
+      <svg viewBox="0 0 ${size} ${size}" style="width:100%;height:auto;max-height:260px;display:block;margin:0 auto 8px;">
+        <defs>
+          <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        ${edgesSvg}
+        ${nodesSvg}
+      </svg>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-bottom:12px;">
+        <span>→ 指示・回答待ち</span>
+        <span style="color:var(--hirameki);">┄┄ 協議中</span>
+        <span>👑 PM</span>
+      </div>
+    `;
   }
 
   /* ==================================================================
@@ -707,6 +798,7 @@
     }
     const ev = SCRIPT[state.stepIndex];
     applyDeptUpdates(ev.deptUpdates);
+    if(ev.relations !== undefined) state.relations = ev.relations;
     renderAll();
 
     if(ev.type === 'human-gate'){
@@ -807,6 +899,12 @@
   /* ==================================================================
      7. 設定モーダル(部署/キャラクター編集・APIキー・フォルダ)
   ================================================================== */
+  function renderPmDeptSelect(){
+    const sel = $('pmDeptSelect');
+    sel.innerHTML = DEPARTMENTS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+    sel.value = state.pmDeptId;
+  }
+
   function renderDeptEditList(){
     const wrap = $('deptEditList');
     wrap.innerHTML = '';
@@ -903,6 +1001,7 @@
     DEPARTMENTS.forEach(d=>{ state.deptStatus[d.id] = { status:'idle', task:'待機中', progress:0, collaborating:[] }; });
     state.stats = { active:0, exchange:0, artifacts:0, hirameki:0 };
     state.log = []; state.artifacts = []; state.stepIndex = 0; state.running = false; state.awaitingGate = false;
+    state.relations = [];
     state.project.status = '待機中';
     $('gatePanel').classList.remove('open','active');
     $('gateWaitingBadge').style.display = 'none';
@@ -917,12 +1016,17 @@
   $('gateAutoBtn').addEventListener('click', useAIForGate);
 
   $('settingsBtn').addEventListener('click', ()=>{
+    renderPmDeptSelect();
     renderDeptEditList();
     renderCharEditList();
     loadApiKey();
     $('settingsOverlay').classList.add('open');
   });
   $('addDeptBtn').addEventListener('click', addDepartment);
+  $('pmDeptSelect').addEventListener('change', e=>{
+    state.pmDeptId = e.target.value;
+    renderAll();
+  });
   $('settingsClose').addEventListener('click', ()=> $('settingsOverlay').classList.remove('open'));
   $('settingsSave').addEventListener('click', ()=>{
     saveApiKey();
