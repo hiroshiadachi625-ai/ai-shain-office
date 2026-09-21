@@ -1,0 +1,939 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="タイトルと概要を渡すと、部署(AI)たちが単独または連携しながら成果物を作り上げるバーチャルオフィス">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI社員オフィス">
+<link rel="apple-touch-icon" href="icons/ai_auto.png">
+<link rel="icon" href="icons/ai_auto.png">
+<link rel="stylesheet" href="fonts.css">
+<title>AI社員オフィス</title>
+<style>
+  :root{
+    --bg:#eef1f7;
+    --panel:#ffffff;
+    --panel-2:#f5f7fb;
+    --border:#e1e6f0;
+    --border-soft:#eaedf4;
+    --text:#1e2a3a;
+    --text-dim:#6b7688;
+    --text-faint:#9aa3b2;
+    --accent:#2563eb;
+    --accent-2:#3b82f6;
+    --accent-soft:rgba(37,99,235,.09);
+    --success:#16a34a;
+    --success-soft:rgba(22,163,74,.10);
+    --hirameki:#d97706;
+    --hirameki-border:#f0b558;
+    --hirameki-soft:rgba(217,119,6,.10);
+    --danger:#dc2626;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'KosugiMaruSubset','InterVar',"Yu Gothic UI","Meiryo UI","Hiragino Sans","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,sans-serif;
+    line-height:1.55;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:1400px;margin:0 auto;padding:22px 24px 60px;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
+  .topbar .label{
+    font-size:11px;letter-spacing:.12em;color:var(--text-dim);font-weight:600;
+  }
+  .topbar h1{font-size:22px;margin:2px 0 0;font-weight:700;letter-spacing:.01em;}
+  .title-block{display:flex;flex-direction:column;flex:1 1 auto;min-width:200px;}
+  .status-badge{
+    font-size:12px;padding:4px 12px;border-radius:999px;font-weight:600;white-space:nowrap;
+    background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(96,165,250,.3);
+  }
+  .status-badge.done{background:var(--success-soft);color:var(--success);border-color:rgba(34,197,94,.3);}
+  .status-badge.idle{background:rgba(0,0,0,.04);color:var(--text-dim);border-color:var(--border);}
+  .topbar-actions{display:flex;gap:8px;margin-left:auto;}
+  .icon-btn{
+    background:var(--panel);border:1px solid var(--border);color:var(--text-dim);
+    width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;transition:.15s;
+  }
+  .icon-btn:hover{color:var(--text);border-color:var(--accent);background:var(--accent-soft);}
+  .pill-btn{
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;
+    display:flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .pill-btn:hover{border-color:var(--accent);background:var(--accent-soft);}
+  .pill-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .pill-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .pill-btn.primary:hover{background:var(--accent-2);}
+
+  /* ---------- Stats ---------- */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+  .stat-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 18px;display:flex;align-items:center;gap:14px;
+  }
+  .stat-icon{
+    width:42px;height:42px;border-radius:10px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .stat-icon img{width:100%;height:100%;object-fit:cover;display:block;}
+  .stat-value{font-size:24px;font-weight:700;line-height:1;}
+  .stat-label{font-size:12px;color:var(--text-dim);margin-top:4px;}
+
+  /* ---------- Main grid ---------- */
+  .main-grid{display:grid;grid-template-columns:280px 1fr 260px;gap:16px;align-items:start;}
+  @media (max-width:1100px){.main-grid{grid-template-columns:1fr;}}
+  @media (max-width:640px){
+    .app{padding:14px 12px 40px;}
+    .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .stat-card{padding:12px;gap:10px;}
+    .stat-value{font-size:20px;}
+    .topbar h1{font-size:18px;}
+    .start-screen{margin:24px auto;padding:20px;}
+    .modal{padding:16px;max-height:88vh;}
+    .char-row{grid-template-columns:1fr;gap:4px;background:var(--panel-2);border-radius:8px;padding:8px;margin-bottom:10px;}
+    .dept-row{grid-template-columns:28px 1fr;gap:8px;}
+    .dept-row input[data-field="description"]{grid-column:1 / -1;}
+    .gate-actions{flex-wrap:wrap;}
+    .gate-actions button{flex:1 1 auto;}
+  }
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;display:flex;flex-direction:column;
+  }
+  .panel h2{font-size:14px;margin:0 0 12px;color:var(--text-dim);font-weight:600;display:flex;align-items:center;gap:6px;}
+
+  /* ---------- Department list ---------- */
+  #deptList{display:flex;flex-direction:column;gap:10px;}
+  .dept-card{
+    border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px;cursor:pointer;
+    background:var(--panel-2);transition:.15s;
+  }
+  .dept-card:hover{border-color:var(--accent);}
+  .dept-card.idle{border-style:dashed;opacity:.55;}
+  .dept-card.collab{border-color:var(--accent);border-width:2px;box-shadow:0 0 0 3px var(--accent-soft);}
+  .dept-card.done{border-color:rgba(34,197,94,.4);}
+  .dept-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .dept-icon{width:22px;height:22px;flex-shrink:0;display:inline-flex;border-radius:6px;overflow:hidden;}
+  .dept-icon img{width:100%;height:100%;object-fit:cover;display:block;}
+  .dept-icon-emoji{
+    width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    background:var(--accent-soft);font-size:13px;border-radius:6px;
+  }
+  .dept-name{font-size:13px;font-weight:600;flex:1;}
+  .dept-task{font-size:11px;color:var(--text-dim);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .progress-track{height:5px;border-radius:3px;background:rgba(0,0,0,.08);overflow:hidden;}
+  .progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .4s;}
+  .dept-card.done .progress-fill{background:var(--success);}
+
+  /* ---------- Log ---------- */
+  #logList{display:flex;flex-direction:column;gap:12px;max-height:520px;overflow-y:auto;padding-right:4px;}
+  #logList::-webkit-scrollbar{width:6px;}
+  #logList::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .msg{display:flex;gap:10px;}
+  .avatar{
+    width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-2);
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;
+  }
+  .avatar.face{background:transparent;overflow:hidden;}
+  .avatar.face img{width:100%;height:100%;object-fit:cover;display:block;}
+  .msg-body{flex:1;min-width:0;}
+  .msg-name{font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:3px;}
+  .msg-bubble{
+    background:var(--panel-2);border:1px solid var(--border-soft);border-radius:10px;
+    padding:9px 12px;font-size:13px;line-height:1.5;display:inline-block;max-width:100%;
+  }
+  .msg-bubble.thinking{color:var(--text-faint);font-style:italic;}
+  .msg.system .msg-bubble{background:transparent;border:none;color:var(--text-dim);font-size:12px;padding:2px 0;}
+  .msg.hirameki .msg-bubble{
+    background:var(--hirameki-soft);border:1px solid var(--hirameki-border);color:#7c4a03;
+  }
+  .msg.hirameki .msg-name{color:var(--hirameki);}
+  .hirameki-tag{
+    display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--hirameki);
+    margin-bottom:4px;
+  }
+
+  /* ---------- Artifacts ---------- */
+  #artifactList{display:flex;flex-direction:column;gap:8px;}
+  .artifact-row{
+    display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--border-soft);
+    border-radius:10px;padding:8px 10px;font-size:12px;
+  }
+  .artifact-ext{
+    width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;overflow:hidden;
+  }
+  .artifact-ext img{width:100%;height:100%;object-fit:cover;display:block;}
+  .artifact-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .artifact-sub{font-size:10px;color:var(--text-faint);}
+  .artifact-status{font-size:14px;flex-shrink:0;cursor:pointer;}
+  .empty-hint{color:var(--text-faint);font-size:12px;text-align:center;padding:20px 8px;}
+
+  /* ---------- Human gate ---------- */
+  .gate-panel{
+    margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .gate-header{
+    display:flex;align-items:center;gap:8px;padding:14px 16px;cursor:pointer;user-select:none;
+  }
+  .gate-header .title{font-size:13px;font-weight:600;flex:1;}
+  .gate-header .caret{transition:.2s;color:var(--text-dim);}
+  .gate-panel.open .caret{transform:rotate(180deg);}
+  .gate-body{display:none;padding:0 16px 16px;}
+  .gate-panel.open .gate-body{display:block;}
+  .gate-panel.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .gate-prompt{font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.6;}
+  .gate-panel textarea{
+    width:100%;min-height:70px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:10px;font-size:13px;resize:vertical;font-family:inherit;
+  }
+  .gate-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
+  .gate-waiting-badge{font-size:11px;color:var(--hirameki);background:var(--hirameki-soft);padding:2px 8px;border-radius:999px;}
+
+  /* ---------- Start screen ---------- */
+  .start-screen{
+    max-width:560px;margin:60px auto;background:var(--panel);border:1px solid var(--border);
+    border-radius:var(--radius);padding:32px;
+  }
+  .start-screen h2{margin-top:0;font-size:18px;}
+  .start-screen p{color:var(--text-dim);font-size:13px;line-height:1.7;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;}
+  .field input[type=text], .field textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:10px;font-size:13px;font-family:inherit;
+  }
+  .field textarea{min-height:70px;resize:vertical;}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;
+    z-index:50;padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    width:100%;max-width:640px;max-height:82vh;overflow-y:auto;padding:22px;
+  }
+  .modal h3{margin-top:0;font-size:16px;}
+  .modal-section{margin-bottom:20px;}
+  .modal-section h4{font-size:12px;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;}
+  .dept-row{
+    display:grid;grid-template-columns:28px 1fr 2fr;gap:8px;margin-bottom:8px;align-items:center;
+  }
+  .dept-row .dept-row-icon{width:28px;height:28px;border-radius:6px;overflow:hidden;flex-shrink:0;}
+  .dept-row .dept-row-icon img{width:100%;height:100%;object-fit:cover;display:block;}
+  .dept-row input{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:6px;
+    padding:6px 8px;font-size:12px;width:100%;
+  }
+  .char-row{
+    display:grid;grid-template-columns:70px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center;
+  }
+  .char-row input{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:6px;
+    padding:6px 8px;font-size:12px;width:100%;
+  }
+  .char-row .dept-badge{font-size:11px;color:var(--text-dim);}
+  .modal-close{float:right;cursor:pointer;color:var(--text-dim);font-size:18px;}
+  .note{font-size:11px;color:var(--text-faint);margin-top:6px;line-height:1.6;}
+  .footer-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ Start screen ============ -->
+  <div class="start-screen" id="startScreen">
+    <h2>🏢 AI社員オフィスを開始</h2>
+    <p>プロジェクトのタイトルと概要を入力すると、部署(AI)たちが単独または連携しながら成果物を作り上げます。<br>まずはモックデータでの動作確認版です(Claude APIへの実際の接続は次の段階で組み込みます)。</p>
+    <div class="field">
+      <label>プロジェクトタイトル</label>
+      <input type="text" id="inputTitle" placeholder="例: 紙帳票回覧プロセスの電子化">
+    </div>
+    <div class="field">
+      <label>概要</label>
+      <textarea id="inputOverview" placeholder="例: スキャンした帳票を既存の承認WFにつなげたい"></textarea>
+    </div>
+    <button class="pill-btn primary" id="startBtn" style="width:100%;justify-content:center;">▶ プロジェクトを開始する</button>
+  </div>
+
+  <!-- ============ Dashboard ============ -->
+  <div id="dashboard" style="display:none;">
+
+    <div class="topbar">
+      <div class="title-block">
+        <span class="label">PROJECT</span>
+        <h1 id="projectTitle">-</h1>
+      </div>
+      <span class="status-badge idle" id="statusBadge">待機中</span>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="playBtn" title="自動進行 開始/一時停止">▶</button>
+        <button class="icon-btn" id="folderBtn" title="成果物の保存先フォルダを選択">📁</button>
+        <button class="icon-btn" id="settingsBtn" title="設定(部署・キャラクター・APIキー)">⚙</button>
+        <button class="icon-btn" id="resetBtn" title="リセットして最初から">🔄</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon"><img src="icons/stat_active.png" alt=""></div><div><div class="stat-value" id="statActive">0</div><div class="stat-label">稼働中の人員</div></div></div>
+      <div class="stat-card"><div class="stat-icon"><img src="icons/stat_exchange.png" alt=""></div><div><div class="stat-value" id="statExchange">0</div><div class="stat-label">やり取り件数</div></div></div>
+      <div class="stat-card"><div class="stat-icon"><img src="icons/stat_artifacts.png" alt=""></div><div><div class="stat-value" id="statArtifacts">0</div><div class="stat-label">生成された成果物</div></div></div>
+      <div class="stat-card"><div class="stat-icon"><img src="icons/stat_hirameki.png" alt=""></div><div><div class="stat-value" id="statHirameki">0</div><div class="stat-label">発生した「ひらめき」</div></div></div>
+    </div>
+
+    <div class="main-grid">
+      <section class="panel">
+        <h2>部署一覧</h2>
+        <div id="deptList"></div>
+      </section>
+
+      <section class="panel">
+        <h2>部署間のやり取りログ</h2>
+        <div id="logList"></div>
+      </section>
+
+      <section class="panel">
+        <h2>成果物ファイル一覧</h2>
+        <div id="artifactList"><div class="empty-hint">まだ成果物はありません</div></div>
+      </section>
+    </div>
+
+    <div class="gate-panel" id="gatePanel">
+      <div class="gate-header" id="gateHeader">
+        <span>🚦</span>
+        <span class="title">人間ゲート</span>
+        <span id="gateWaitingBadge" style="display:none;" class="gate-waiting-badge">回答待ち</span>
+        <span class="caret">▾</span>
+      </div>
+      <div class="gate-body">
+        <div class="gate-prompt" id="gatePrompt">現在、人間ゲートでの確認待ちはありません。</div>
+        <textarea id="gateInput" placeholder="現場の生の反応・判断内容を入力してください" disabled></textarea>
+        <div class="gate-actions">
+          <button class="pill-btn" id="gateAutoBtn" disabled title="人間の回答を待たず、AIに想定回答を考えさせて進行を再開します"><img src="icons/ai_auto.png" alt="" style="width:16px;height:16px;border-radius:4px;">AIにお任せ</button>
+          <button class="pill-btn primary" id="gateSubmit" disabled>回答を送信して再開</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ Settings modal ============ -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal">
+      <span class="modal-close" id="settingsClose">✕</span>
+      <h3>⚙ 設定</h3>
+
+      <div class="modal-section">
+        <h4>Claude APIキー(次段階のAPI接続で使用予定・現在は未使用)</h4>
+        <input type="text" id="apiKeyInput" placeholder="sk-ant-..." style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:12px;">
+        <div class="note">この端末のブラウザ(localStorage)にのみ保存されます。共有PCでは入力しないでください。</div>
+      </div>
+
+      <div class="modal-section">
+        <h4>成果物の保存先フォルダ</h4>
+        <button class="pill-btn" id="settingsFolderBtn">📁 フォルダを選択</button>
+        <span class="note" id="folderStatus">未選択(未選択の場合は個別ダウンロードになります)</span>
+      </div>
+
+      <div class="modal-section">
+        <h4>部署テンプレート(名前・役割)</h4>
+        <div id="deptEditList"></div>
+        <button class="pill-btn" id="addDeptBtn" style="margin-top:4px;">＋ 部署を追加</button>
+        <div class="note">部署名や役割の説明文をここで変更できます。画面上の表示(部署一覧・キャラクター編集欄のバッジなど)にすぐ反映されます。新規追加した部署にはまだ専用アイコン画像がないため、仮の絵文字アイコンで表示されます。</div>
+      </div>
+
+      <div class="modal-section">
+        <h4>キャラクター テンプレート(名前・性格・制約)</h4>
+        <div id="charEditList"></div>
+        <div class="note">ここでの編集は次段階のAPI接続時のキャラクター設定として使用されます。今回のモックデモの進行内容(台本)には反映されません。</div>
+      </div>
+
+      <div class="footer-actions">
+        <button class="pill-btn primary" id="settingsSave">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ==================================================================
+     1. データモデル(設計書 2章に対応)
+  ================================================================== */
+  const DEPARTMENTS = [
+    { id:'qa',    name:'品質ゲートウェイ班', icon:'✅', description:'仕様確定・品質基準' },
+    { id:'sales', name:'営業部',           icon:'🤝', description:'現場の使い勝手・顧客反応' },
+    { id:'plan',  name:'業務企画部',       icon:'📋', description:'業務フロー設計・要件整理' },
+    { id:'sys',   name:'システム部門',     icon:'🖥', description:'システム実装・技術検証' },
+    { id:'sub',   name:'事務子会社',       icon:'🏢', description:'現場運用・実務担当' },
+  ];
+
+  let CHARACTERS = [
+    { id:'sato',      name:'佐藤', deptId:'qa',    personality:'事なかれ主義', constraints:['基準を緩めた過去のクレーム事例'], earlyCompromiseBanned:true, avatarId:'male1' },
+    { id:'suzuki',    name:'鈴木', deptId:'sales', personality:'ナマケモノ',   constraints:['現場の反発が過去にあった施策リスト'], earlyCompromiseBanned:true, avatarId:'male2' },
+    { id:'tanaka',    name:'田中', deptId:'plan',  personality:'出世競争',     constraints:['予算は上期300万円まで'], earlyCompromiseBanned:true, avatarId:'male3' },
+    { id:'takahashi', name:'高橋', deptId:'sys',   personality:'現場叩き上げ', constraints:['工数は3人月まで','過去の障害事例A'], earlyCompromiseBanned:true, avatarId:'male4' },
+    { id:'ito',       name:'伊藤', deptId:'sub',   personality:'嫉妬',         constraints:['他部署への権限委譲NG事例'], earlyCompromiseBanned:false, avatarId:'female3' },
+  ];
+  // 予備アバター(未使用・設定画面から社員を追加する際に割り当てる想定): female1, female2, female4
+
+  const charById = id => CHARACTERS.find(c=>c.id===id);
+  const deptById = id => DEPARTMENTS.find(d=>d.id===id);
+
+  /* 実行状態(設計書 2章 projectState 相当) */
+  let state = {
+    project:{ title:'', overview:'', status:'待機中' },
+    stats:{ active:0, exchange:0, artifacts:0, hirameki:0 },
+    deptStatus:{},   // id -> {status, task, progress, collaborating:[]}
+    log:[],
+    artifacts:[],
+    stepIndex:0,
+    running:false,
+    awaitingGate:false,
+    dirHandle:null,
+    timerId:null,
+  };
+
+  DEPARTMENTS.forEach(d=>{
+    state.deptStatus[d.id] = { status:'idle', task:'待機中', progress:0, collaborating:[] };
+  });
+
+  /* ==================================================================
+     2. 段階1向けスタブ:callDepartmentAI
+     (段階2でAnthropic API呼び出しに置き換える差し込みポイント)
+  ================================================================== */
+  async function callDepartmentAI(character, incomingMessage, context){
+    // モック: 実際にはここでAPIを呼ぶ。今は事前に用意した台本(SCRIPT)を再生するだけ。
+    return { text: incomingMessage, proposedArtifact: context && context.artifact };
+  }
+
+  /* ==================================================================
+     3. 台本(段階1のモック進行データ)
+     要件定義書 6章のワークフロー例に沿った一連のイベント。
+     段階2では、この固定台本を「部署間の実際の往復ロジック」に置き換える。
+  ================================================================== */
+  const SCRIPT = [
+    { deptUpdates:[{id:'qa',status:'working',task:'仕様の確定作業中',progress:20}],
+      from:'sato', text:'帳票電子化の対象範囲と承認フローの仕様を確定します。', expression:'neutral' },
+
+    { deptUpdates:[{id:'qa',progress:70}],
+      from:'sato', text:'スキャンした帳票をREDOSの承認WFに接続する仕様で確定しました。', expression:'serious' },
+
+    { deptUpdates:[{id:'qa',status:'done',task:'仕様確定 完了',progress:100}],
+      from:'sato', text:'仕様書を格納しました。営業部門、使い勝手の確認をお願いします。', expression:'neutral',
+      artifact:{deptId:'qa', filename:'仕様書_v1.pdf'} },
+
+    { deptUpdates:[{id:'sales',status:'working',task:'現場の使い勝手を確認中',progress:30,collaborating:['qa']}],
+      from:'suzuki', text:'この仕様で営業現場に投げてみます。少々お待ちを…', expression:'neutral' },
+
+    { type:'human-gate',
+      prompt:'営業現場にこの仕様をヒアリングしました。実際の反応・懸念点を入力してください(人間ゲート)。',
+      deptUpdates:[] },
+
+    { deptUpdates:[{id:'sales',status:'done',task:'現場確認 完了',progress:100,collaborating:[]}],
+      from:'suzuki', text:'現場から実際の声をもらいました。', expression:'neutral' },
+
+    { deptUpdates:[
+        {id:'plan',status:'working',task:'業務フロー設計中',progress:20,collaborating:['sys']},
+        {id:'sys',status:'working',task:'技術検証中',progress:20,collaborating:['plan']}
+      ],
+      from:'tanaka', text:'業務企画としては、承認フローに例外処理を追加したいです。', expression:'serious' },
+
+    { deptUpdates:[],
+      from:'takahashi', text:'工数的にAPI連携は厳しいです。例外処理は別バッチにしましょう。', conflictPair:['plan','sys'], expression:'troubled' },
+
+    { deptUpdates:[{id:'sub',status:'working',task:'運用可否を検討中',progress:30,collaborating:['plan','sys']}],
+      from:'tanaka', text:'でも現場運用の話なんですよ。事務子会社が回せないと意味がありません。', conflictPair:['plan','sys'], expression:'serious' },
+
+    { deptUpdates:[],
+      from:'ito', text:'正直、今のままの運用手順だと私たちの人員では厳しいです。', conflictPair:['plan','sub'], expression:'troubled' },
+
+    { deptUpdates:[],
+      from:'takahashi', text:'工数超過は過去の障害事例Aの二の舞になりかねません。譲れません。', conflictPair:['plan','sys'], expression:'troubled' },
+
+    { type:'hirameki',
+      deptUpdates:[
+        {id:'plan',status:'done',task:'合意 完了',progress:100,collaborating:[]},
+        {id:'sys',status:'done',task:'合意 完了',progress:100,collaborating:[]},
+        {id:'sub',status:'done',task:'合意 完了',progress:100,collaborating:[]}
+      ],
+      title:'統合案',
+      text:'ミドルウェア層を挟むことで、業務企画の例外要件・システムの工数制約・事務子会社の運用負荷を同時に満たす代替案を提示。',
+      authors:['tanaka','takahashi'],
+      artifact:{deptId:'sys', filename:'ミドルウェア設計案_v1.pdf'} },
+
+    { type:'system', deptUpdates:[],
+      text:'全部署が合意しました。プロトタイプを自動生成します。',
+      artifact:{deptId:'qa', filename:'プロトタイプ_v1.zip'},
+      finish:true },
+  ];
+
+  /* ==================================================================
+     4. レンダリング
+  ================================================================== */
+  const $ = id => document.getElementById(id);
+
+  function renderStats(){
+    $('statActive').textContent = state.stats.active;
+    $('statExchange').textContent = state.stats.exchange;
+    $('statArtifacts').textContent = state.stats.artifacts;
+    $('statHirameki').textContent = state.stats.hirameki;
+  }
+
+  function renderStatusBadge(){
+    const badge = $('statusBadge');
+    badge.className = 'status-badge';
+    if(state.project.status === '完了'){ badge.classList.add('done'); badge.textContent = '完了'; }
+    else if(state.project.status === '進行中'){ badge.textContent = '進行中'; }
+    else { badge.classList.add('idle'); badge.textContent = state.project.status; }
+  }
+
+  /* 部署アイコン:専用イラストがあれば画像、なければ仮の絵文字で表示 */
+  function deptIconHtml(d){
+    if(d.hasIcon === false){
+      return `<span class="dept-icon-emoji">${d.icon || '🏢'}</span>`;
+    }
+    return `<img src="icons/dept_${d.id}.png" alt="">`;
+  }
+
+  function renderDeptList(){
+    const wrap = $('deptList');
+    wrap.innerHTML = '';
+    DEPARTMENTS.forEach(d=>{
+      const st = state.deptStatus[d.id];
+      const card = document.createElement('div');
+      card.className = 'dept-card ' + (st.status==='idle' ? 'idle' : st.status==='done' ? 'done' : (st.collaborating.length ? 'collab' : ''));
+      card.innerHTML = `
+        <div class="dept-top">
+          <span class="dept-icon">${deptIconHtml(d)}</span>
+          <span class="dept-name">${d.name}</span>
+        </div>
+        <div class="dept-task">${st.task}</div>
+        <div class="progress-track"><div class="progress-fill" style="width:${st.progress}%"></div></div>
+      `;
+      card.addEventListener('click', ()=> showDeptDetail(d.id));
+      wrap.appendChild(card);
+    });
+  }
+
+  function showDeptDetail(deptId){
+    const d = deptById(deptId), st = state.deptStatus[deptId];
+    const members = CHARACTERS.filter(c=>c.deptId===deptId).map(c=>c.name).join('、') || '(未設定)';
+    alert(`${d.icon} ${d.name}\n\n担当分野: ${d.description}\n状態: ${st.status}\n作業内容: ${st.task}\n進捗: ${st.progress}%\nメンバー: ${members}`);
+  }
+
+  function renderLog(){
+    const wrap = $('logList');
+    wrap.innerHTML = '';
+    state.log.forEach(entry=>{
+      wrap.appendChild(buildLogNode(entry));
+    });
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function buildLogNode(entry){
+    const div = document.createElement('div');
+    if(entry.kind === 'system'){
+      div.className = 'msg system';
+      div.innerHTML = `<div class="msg-body"><div class="msg-bubble">${entry.text}</div></div>`;
+      return div;
+    }
+    if(entry.kind === 'human-gate-answer'){
+      div.className = 'msg system';
+      div.innerHTML = `<div class="msg-body"><div class="msg-bubble">🚦 人間ゲート回答:「${escapeHtml(entry.text)}」</div></div>`;
+      return div;
+    }
+    if(entry.kind === 'human-gate-auto'){
+      div.className = 'msg system';
+      div.innerHTML = `<div class="msg-body"><div class="msg-bubble"><img src="icons/ai_auto.png" alt="" style="width:14px;height:14px;border-radius:3px;vertical-align:-2px;"> AIにお任せした回答:「${escapeHtml(entry.text)}」</div></div>`;
+      return div;
+    }
+    if(entry.kind === 'hirameki'){
+      div.className = 'msg hirameki';
+      const authorNames = entry.authors.map(id=>{
+        const c = charById(id); return `${c.name}(${deptById(c.deptId).name})`;
+      }).join(' & ');
+      div.innerHTML = `
+        <div class="avatar">💡</div>
+        <div class="msg-body">
+          <div class="hirameki-tag">💡 ひらめき: ${entry.title}</div>
+          <div class="msg-bubble">${entry.text}<br><br><span style="opacity:.75;font-size:11px;">担当: ${authorNames}</span></div>
+        </div>`;
+      return div;
+    }
+    // normal message or thinking
+    const c = charById(entry.charId);
+    const dName = deptById(c.deptId).name;
+    const expr = entry.thinking ? 'neutral' : (entry.expression || 'neutral');
+    div.className = 'msg';
+    div.id = entry.domId || '';
+    div.innerHTML = `
+      <div class="avatar face"><img src="avatars/${c.avatarId}_${expr}.png" alt="${c.name}"></div>
+      <div class="msg-body">
+        <div class="msg-name">${c.name}(${dName})</div>
+        <div class="msg-bubble ${entry.thinking?'thinking':''}">${entry.thinking ? '検討中…' : escapeHtml(entry.text)}</div>
+      </div>`;
+    return div;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderArtifacts(){
+    const wrap = $('artifactList');
+    if(state.artifacts.length===0){
+      wrap.innerHTML = '<div class="empty-hint">まだ成果物はありません</div>';
+      return;
+    }
+    wrap.innerHTML = '';
+    state.artifacts.forEach(a=>{
+      const ext = (a.filename.split('.').pop()||'').toLowerCase();
+      const iconMap = { pdf:'file_pdf', zip:'file_zip', xlsx:'file_xlsx', py:'file_py', txt:'file_txt' };
+      const row = document.createElement('div');
+      row.className = 'artifact-row';
+      row.innerHTML = `
+        <div class="artifact-ext"><img src="icons/${iconMap[ext] || 'file_txt'}.png" alt=""></div>
+        <div style="flex:1;min-width:0;">
+          <div class="artifact-name">${a.filename}</div>
+          <div class="artifact-sub">${deptById(a.deptId).name}</div>
+        </div>
+        <div class="artifact-status" title="${a.saved?'保存先フォルダに保存済み':'クリックしてダウンロード'}">${a.saved?'✅':'⬇'}</div>
+      `;
+      if(!a.saved){
+        row.querySelector('.artifact-status').addEventListener('click', ()=> downloadArtifact(a));
+      }
+      wrap.appendChild(row);
+    });
+  }
+
+  function renderAll(){
+    renderStats();
+    renderStatusBadge();
+    renderDeptList();
+    renderLog();
+    renderArtifacts();
+    $('playBtn').textContent = state.running ? '⏸' : '▶';
+  }
+
+  /* ==================================================================
+     5. 成果物ファイルの保存(File System Access API / ダウンロード)
+     設計書 3.3 fallback を含む
+  ================================================================== */
+  async function settleArtifact(artifactDef){
+    const dept = deptById(artifactDef.deptId);
+    const content = `(モック成果物)\nファイル名: ${artifactDef.filename}\n担当部署: ${dept.name}\n生成日時: ${new Date().toLocaleString()}\n\nこれは段階1(モックデータ)の生成物です。段階2でClaude APIによる実際の成果物に置き換わります。`;
+    const artifact = { ...artifactDef, saved:false, content };
+
+    if(state.dirHandle){
+      try{
+        const deptDir = await state.dirHandle.getDirectoryHandle(dept.name, { create:true });
+        const fileHandle = await deptDir.getFileHandle(artifactDef.filename, { create:true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(content);
+        await writable.close();
+        artifact.saved = true;
+      }catch(e){
+        console.error('保存に失敗しました', e);
+      }
+    }
+    state.artifacts.push(artifact);
+    state.stats.artifacts++;
+  }
+
+  function downloadArtifact(a){
+    const blob = new Blob([a.content], { type:'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = a.filename;
+    document.body.appendChild(link); link.click(); link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function chooseFolder(){
+    if(!window.showDirectoryPicker){
+      alert('このブラウザはフォルダへの自動保存(File System Access API)に対応していません。Chrome/Edgeでお試しください。\n成果物は個別ダウンロードで取得できます。');
+      return;
+    }
+    try{
+      state.dirHandle = await window.showDirectoryPicker();
+      $('folderStatus').textContent = '選択済み: ' + (state.dirHandle.name || '(フォルダ)');
+    }catch(e){
+      // ユーザーがキャンセルした場合は何もしない
+    }
+  }
+
+  /* ==================================================================
+     6. 台本の進行(段階1の疑似オーケストレーション)
+  ================================================================== */
+  const CONFLICT_HIRAMEKI_STAT_ONLY = true; // 台本駆動のため、カウンタは統計表示専用
+
+  function applyDeptUpdates(updates){
+    (updates||[]).forEach(u=>{
+      const st = state.deptStatus[u.id];
+      if(u.status) st.status = u.status;
+      if(u.task) st.task = u.task;
+      if(typeof u.progress === 'number') st.progress = u.progress;
+      if(u.collaborating) st.collaborating = u.collaborating;
+    });
+    state.stats.active = Object.values(state.deptStatus).filter(s=>s.status==='working').length;
+  }
+
+  function scheduleNext(delay){
+    if(!state.running) return;
+    state.timerId = setTimeout(advance, delay || 1800);
+  }
+
+  function advance(){
+    if(state.awaitingGate) return;
+    if(state.stepIndex >= SCRIPT.length){
+      state.running = false;
+      renderAll();
+      return;
+    }
+    const ev = SCRIPT[state.stepIndex];
+    applyDeptUpdates(ev.deptUpdates);
+    renderAll();
+
+    if(ev.type === 'human-gate'){
+      openHumanGate(ev.prompt);
+      return; // stepIndexはゲート回答後に進める
+    }
+
+    if(ev.from){
+      const c = charById(ev.from);
+      const thinkingEntry = { kind:'char', charId:ev.from, thinking:true, domId:'thinking-tmp' };
+      state.log.push(thinkingEntry);
+      renderLog();
+      setTimeout(()=>{
+        state.log.pop(); // thinking表示を除去
+        state.log.push({ kind:'char', charId:ev.from, text:ev.text, expression: ev.expression || 'neutral' });
+        state.stats.exchange++;
+        if(ev.conflictPair){ /* 対立カウントの可視化のみ(モック) */ }
+        if(ev.artifact){ settleArtifact(ev.artifact); }
+        if(ev.type === 'hirameki'){
+          state.log.push({ kind:'hirameki', title:ev.title, text:ev.text, authors:ev.authors });
+          state.stats.hirameki++;
+        }
+        if(ev.finish){ state.project.status = '完了'; }
+        state.stepIndex++;
+        renderAll();
+        scheduleNext();
+      }, 900);
+      return;
+    }
+
+    // ひらめき、またはsystem専用イベント(発言キャラクターを介さないもの)
+    if(ev.type === 'hirameki'){
+      state.log.push({ kind:'hirameki', title:ev.title, text:ev.text, authors:ev.authors });
+      state.stats.hirameki++;
+    } else {
+      state.log.push({ kind:'system', text: ev.text });
+    }
+    if(ev.artifact){ settleArtifact(ev.artifact); }
+    if(ev.finish){ state.project.status = '完了'; state.running = false; }
+    state.stepIndex++;
+    renderAll();
+    scheduleNext();
+  }
+
+  function togglePlay(){
+    if(state.project.status === '完了') return;
+    state.running = !state.running;
+    if(state.running){ state.project.status = '進行中'; advance(); }
+    else { clearTimeout(state.timerId); }
+    renderAll();
+  }
+
+  /* ---------- 人間ゲート ---------- */
+  function openHumanGate(promptText){
+    state.awaitingGate = true;
+    clearTimeout(state.timerId);
+    const panel = $('gatePanel');
+    panel.classList.add('open','active');
+    $('gateWaitingBadge').style.display = 'inline-block';
+    $('gatePrompt').textContent = promptText;
+    const input = $('gateInput'); input.disabled = false; input.value = '';
+    $('gateSubmit').disabled = false;
+    $('gateAutoBtn').disabled = false;
+  }
+
+  function submitHumanGate(kind){
+    const val = $('gateInput').value.trim();
+    if(!val){ $('gateInput').focus(); return; }
+    state.log.push({ kind: kind || 'human-gate-answer', text: val });
+    state.awaitingGate = false;
+    $('gatePanel').classList.remove('active');
+    $('gateWaitingBadge').style.display = 'none';
+    $('gatePrompt').textContent = '現在、人間ゲートでの確認待ちはありません。';
+    $('gateInput').disabled = true; $('gateInput').value = '';
+    $('gateSubmit').disabled = true;
+    $('gateAutoBtn').disabled = true;
+    state.stepIndex++; // human-gateイベントを消化
+    renderAll();
+    scheduleNext(600);
+  }
+
+  /* 段階1向けスタブ:人間ゲートの想定回答をAIに考えさせる
+     (段階2でAnthropic APIに「この問いに対する妥当な回答」を生成させる差し込みポイント) */
+  async function callAIForGateAnswer(promptText){
+    return '(AIによる想定回答)現場の反応は概ね好意的です。ただし、スキャン時に文字がかすれるケースがあるとの声があり、解像度設定の見直しを求められています。';
+  }
+
+  async function useAIForGate(){
+    $('gateAutoBtn').disabled = true;
+    $('gateSubmit').disabled = true;
+    const promptText = $('gatePrompt').textContent;
+    $('gateInput').value = '(AIが考え中…)';
+    const answer = await callAIForGateAnswer(promptText);
+    $('gateInput').value = answer;
+    submitHumanGate('human-gate-auto');
+  }
+
+  /* ==================================================================
+     7. 設定モーダル(部署/キャラクター編集・APIキー・フォルダ)
+  ================================================================== */
+  function renderDeptEditList(){
+    const wrap = $('deptEditList');
+    wrap.innerHTML = '';
+    DEPARTMENTS.forEach((d,idx)=>{
+      const row = document.createElement('div');
+      row.className = 'dept-row';
+      row.innerHTML = `
+        <span class="dept-row-icon">${deptIconHtml(d)}</span>
+        <input type="text" value="${d.name}" data-field="name" data-idx="${idx}" placeholder="部署名">
+        <input type="text" value="${d.description}" data-field="description" data-idx="${idx}" placeholder="役割の説明">
+      `;
+      wrap.appendChild(row);
+    });
+    wrap.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        const idx = +e.target.dataset.idx, field = e.target.dataset.field;
+        DEPARTMENTS[idx][field] = e.target.value;
+        renderCharEditList(); // キャラクター編集欄の部署バッジ表示に反映
+        renderAll();          // ダッシュボード側の部署一覧にも反映
+      });
+    });
+  }
+
+  let extraDeptCount = 0;
+  function addDepartment(){
+    extraDeptCount++;
+    const id = 'extra' + extraDeptCount;
+    const newDept = { id, name:'新しい部署'+extraDeptCount, icon:'🏢', description:'(役割を入力してください)', hasIcon:false };
+    DEPARTMENTS.push(newDept);
+    state.deptStatus[id] = { status:'idle', task:'待機中', progress:0, collaborating:[] };
+    renderDeptEditList();
+    renderAll();
+  }
+
+  function renderCharEditList(){
+    const wrap = $('charEditList');
+    wrap.innerHTML = '';
+    CHARACTERS.forEach((c,idx)=>{
+      const row = document.createElement('div');
+      row.className = 'char-row';
+      row.innerHTML = `
+        <input type="text" value="${c.name}" data-field="name" data-idx="${idx}">
+        <span class="dept-badge">${deptById(c.deptId).icon} ${deptById(c.deptId).name}</span>
+        <input type="text" value="${c.personality}" data-field="personality" data-idx="${idx}" placeholder="性格">
+        <input type="text" value="${c.constraints.join(' / ')}" data-field="constraints" data-idx="${idx}" placeholder="譲れない制約(/区切り)">
+      `;
+      wrap.appendChild(row);
+    });
+    wrap.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        const idx = +e.target.dataset.idx, field = e.target.dataset.field;
+        if(field === 'constraints') CHARACTERS[idx].constraints = e.target.value.split('/').map(s=>s.trim()).filter(Boolean);
+        else CHARACTERS[idx][field] = e.target.value;
+      });
+    });
+  }
+
+  function loadApiKey(){
+    try{
+      const key = localStorage.getItem('aiOffice_apiKey');
+      if(key) $('apiKeyInput').value = key;
+    }catch(e){ console.warn('localStorageが利用できません', e); }
+  }
+  function saveApiKey(){
+    try{
+      const v = $('apiKeyInput').value.trim();
+      if(v) localStorage.setItem('aiOffice_apiKey', v);
+      else localStorage.removeItem('aiOffice_apiKey');
+    }catch(e){ console.warn('localStorageが利用できません', e); }
+  }
+
+  /* ==================================================================
+     8. イベント配線
+  ================================================================== */
+  $('startBtn').addEventListener('click', ()=>{
+    const title = $('inputTitle').value.trim() || '無題のプロジェクト';
+    const overview = $('inputOverview').value.trim();
+    state.project.title = title;
+    state.project.overview = overview;
+    state.project.status = '待機中';
+    $('projectTitle').textContent = title;
+    $('startScreen').style.display = 'none';
+    $('dashboard').style.display = 'block';
+    renderAll();
+  });
+
+  $('playBtn').addEventListener('click', togglePlay);
+  $('folderBtn').addEventListener('click', chooseFolder);
+  $('settingsFolderBtn').addEventListener('click', chooseFolder);
+
+  $('resetBtn').addEventListener('click', ()=>{
+    if(!confirm('進行中のログ・成果物をリセットして最初からやり直します。よろしいですか?')) return;
+    clearTimeout(state.timerId);
+    DEPARTMENTS.forEach(d=>{ state.deptStatus[d.id] = { status:'idle', task:'待機中', progress:0, collaborating:[] }; });
+    state.stats = { active:0, exchange:0, artifacts:0, hirameki:0 };
+    state.log = []; state.artifacts = []; state.stepIndex = 0; state.running = false; state.awaitingGate = false;
+    state.project.status = '待機中';
+    $('gatePanel').classList.remove('open','active');
+    $('gateWaitingBadge').style.display = 'none';
+    $('gatePrompt').textContent = '現在、人間ゲートでの確認待ちはありません。';
+    $('gateInput').disabled = true; $('gateInput').value = '';
+    $('gateSubmit').disabled = true; $('gateAutoBtn').disabled = true;
+    renderAll();
+  });
+
+  $('gateHeader').addEventListener('click', ()=> $('gatePanel').classList.toggle('open'));
+  $('gateSubmit').addEventListener('click', ()=> submitHumanGate('human-gate-answer'));
+  $('gateAutoBtn').addEventListener('click', useAIForGate);
+
+  $('settingsBtn').addEventListener('click', ()=>{
+    renderDeptEditList();
+    renderCharEditList();
+    loadApiKey();
+    $('settingsOverlay').classList.add('open');
+  });
+  $('addDeptBtn').addEventListener('click', addDepartment);
+  $('settingsClose').addEventListener('click', ()=> $('settingsOverlay').classList.remove('open'));
+  $('settingsSave').addEventListener('click', ()=>{
+    saveApiKey();
+    $('settingsOverlay').classList.remove('open');
+  });
+  $('settingsOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'settingsOverlay') $('settingsOverlay').classList.remove('open');
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
