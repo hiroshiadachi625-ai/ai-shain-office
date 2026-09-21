@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="description" content="タイトルと概要を渡すと、部署(AI)たちが単独または連携しながら成果物を作り上げるバーチャルオフィス">
+<meta name="description" content="チームの協調を、AIの力で最適化。タイトルと概要を渡すと、部署(AI)たちが単独または連携しながら成果物を作り上げるバーチャルオフィス">
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="AI社員オフィス">
-<link rel="apple-touch-icon" href="icons/ai_auto.png">
-<link rel="icon" href="icons/ai_auto.png">
+<meta name="apple-mobile-web-app-title" content="ORCHESTRA">
+<link rel="apple-touch-icon" href="icons/app_logo.png">
+<link rel="icon" href="icons/app_logo.png">
 <link rel="stylesheet" href="fonts.css">
-<title>AI社員オフィス</title>
+<title>ORCHESTRA - チームの協調を、AIの力で最適化。</title>
 <style>
   :root{
     --bg:#eef1f7;
@@ -97,7 +97,10 @@
     .stat-card{padding:12px;gap:10px;}
     .stat-value{font-size:20px;}
     .topbar h1{font-size:18px;}
-    .start-screen{margin:24px auto;padding:20px;}
+    .start-screen{margin:20px auto;}
+    .start-logo-area, .start-form{padding-left:18px;padding-right:18px;}
+    .start-hero{margin-left:18px;margin-right:18px;}
+    .start-logo{font-size:26px;}
     .modal{padding:16px;max-height:88vh;}
     .char-row{grid-template-columns:1fr;gap:4px;background:var(--panel-2);border-radius:8px;padding:8px;margin-bottom:10px;}
     .dept-row{grid-template-columns:28px 1fr;gap:8px;}
@@ -179,23 +182,35 @@
   .empty-hint{color:var(--text-faint);font-size:12px;text-align:center;padding:20px 8px;}
 
   /* ---------- プロジェクトオーナーチェック(旧:人間ゲート) ---------- */
-  .gate-indicator-btn{
-    margin-left:auto;width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;
-    background:var(--hirameki);color:#fff;font-size:15px;display:none;
+  .indicator-group{margin-left:auto;display:flex;gap:8px;}
+  .gate-indicator-btn, .report-indicator-btn{
+    width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;
+    color:#fff;font-size:15px;display:none;
     align-items:center;justify-content:center;flex-shrink:0;
-    animation:gatePulse 1.6s infinite;
   }
+  .gate-indicator-btn{background:var(--hirameki);animation:gatePulse 1.6s infinite;}
+  .report-indicator-btn{background:var(--accent);animation:reportPulse 1.6s infinite;}
   @keyframes gatePulse{
     0%{box-shadow:0 0 0 0 rgba(217,119,6,.55);}
     70%{box-shadow:0 0 0 10px rgba(217,119,6,0);}
     100%{box-shadow:0 0 0 0 rgba(217,119,6,0);}
+  }
+  @keyframes reportPulse{
+    0%{box-shadow:0 0 0 0 rgba(37,99,235,.55);}
+    70%{box-shadow:0 0 0 10px rgba(37,99,235,0);}
+    100%{box-shadow:0 0 0 0 rgba(37,99,235,0);}
   }
   .gate-prompt{font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.6;}
   #gateInput{
     width:100%;min-height:90px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
     border-radius:8px;padding:10px;font-size:13px;resize:vertical;font-family:inherit;
   }
-  .gate-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;}
+  .gate-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  #reportInstructionInput{
+    width:100%;min-height:70px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:10px;font-size:13px;resize:vertical;font-family:inherit;
+  }
+  #reportFileInput{width:100%;font-size:12px;color:var(--text-dim);}
   .gate-waiting-badge{font-size:11px;color:var(--hirameki);background:var(--hirameki-soft);padding:2px 8px;border-radius:999px;margin-left:8px;}
 
   /* ---------- 部署一覧:協議中/回答待ちラベル ---------- */
@@ -218,18 +233,40 @@
   .char-avatar-thumb{width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid var(--border);}
   .char-avatar-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 
-  /* ---------- Start screen ---------- */
+  /* ---------- Start screen(ORCHESTRA) ---------- */
   .start-screen{
-    max-width:560px;margin:60px auto;background:var(--panel);border:1px solid var(--border);
-    border-radius:var(--radius);padding:32px;
+    max-width:600px;margin:40px auto;background:var(--panel);border:1px solid var(--border);
+    border-radius:24px;padding:0 0 32px;overflow:hidden;box-shadow:0 20px 40px rgba(30,42,58,.08);
   }
-  .start-screen h2{margin-top:0;font-size:18px;}
-  .start-screen p{color:var(--text-dim);font-size:13px;line-height:1.7;}
+  .start-logo-area{padding:36px 32px 0;text-align:center;}
+  .start-logo{
+    font-size:32px;font-weight:800;color:var(--accent);letter-spacing:.02em;margin:0;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .start-logo img{width:36px;height:36px;border-radius:9px;}
+  .start-tagline{font-size:12px;color:var(--text-dim);margin:8px 0 0;letter-spacing:.03em;}
+  .start-hero{
+    margin:22px 32px 0;border-radius:16px;overflow:hidden;
+    background:linear-gradient(180deg,var(--accent-soft),transparent);
+    border:1px solid var(--border-soft);min-height:160px;display:flex;align-items:center;justify-content:center;
+  }
+  .start-hero img{width:100%;height:100%;object-fit:cover;display:block;}
+  .start-hero .hero-fallback{padding:36px 20px;text-align:center;color:var(--text-faint);font-size:12px;}
+  .start-form{padding:26px 32px 0;}
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;}
   .field input[type=text], .field textarea{
     width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
     border-radius:8px;padding:10px;font-size:13px;font-family:inherit;
+  }
+  .folder-row{
+    display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--border);
+    border-radius:8px;padding:9px 10px;font-size:12px;margin-bottom:16px;
+  }
+  .folder-row .folder-label{color:var(--text-dim);white-space:nowrap;flex-shrink:0;}
+  .folder-row .folder-path{
+    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    background:var(--panel);border:1px solid var(--border-soft);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text-dim);
   }
   .field textarea{min-height:70px;resize:vertical;}
 
@@ -271,19 +308,36 @@
 <body>
 <div class="app">
 
-  <!-- ============ Start screen ============ -->
+  <!-- ============ Start screen(ORCHESTRA) ============ -->
   <div class="start-screen" id="startScreen">
-    <h2>🏢 AI社員オフィスを開始</h2>
-    <p>プロジェクトのタイトルと概要を入力すると、部署(AI)たちが単独または連携しながら成果物を作り上げます。<br>まずはモックデータでの動作確認版です(Claude APIへの実際の接続は次の段階で組み込みます)。</p>
-    <div class="field">
-      <label>プロジェクトタイトル</label>
-      <input type="text" id="inputTitle" placeholder="例: 紙帳票回覧プロセスの電子化">
+    <div class="start-logo-area">
+      <h1 class="start-logo"><img src="icons/app_logo.png" alt="" onerror="this.style.display='none'">ORCHESTRA</h1>
+      <p class="start-tagline">チームの協調を、AIの力で最適化。</p>
     </div>
-    <div class="field">
-      <label>概要</label>
-      <textarea id="inputOverview" placeholder="例: スキャンした帳票を既存の承認WFにつなげたい"></textarea>
+    <div class="start-hero">
+      <img src="icons/app_hero.png" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+      <div class="hero-fallback" style="display:none;">🏢 部署(AI)たちが単独または連携しながら成果物を作り上げます</div>
     </div>
-    <button class="pill-btn primary" id="startBtn" style="width:100%;justify-content:center;">▶ プロジェクトを開始する</button>
+    <div class="start-form">
+      <div class="field">
+        <label>プロジェクト名</label>
+        <input type="text" id="inputTitle" placeholder="例: 紙帳票回覧プロセスの電子化">
+      </div>
+      <div class="field">
+        <label>概要</label>
+        <textarea id="inputOverview" placeholder="例: スキャンした帳票を既存の承認WFにつなげたい"></textarea>
+      </div>
+      <div class="field">
+        <label>詳細(任意)</label>
+        <textarea id="inputDetail" placeholder="背景・制約条件・参考情報などがあれば"></textarea>
+      </div>
+      <div class="folder-row">
+        <span class="folder-label">📁 保存先</span>
+        <span class="folder-path" id="startFolderPath">未選択(個別ダウンロードになります)</span>
+        <button type="button" class="pill-btn" id="startFolderBtn" style="flex-shrink:0;">変更</button>
+      </div>
+      <button class="pill-btn primary" id="startBtn" style="width:100%;justify-content:center;">▶ プロジェクトを開始する</button>
+    </div>
   </div>
 
   <!-- ============ Dashboard ============ -->
@@ -312,7 +366,12 @@
 
     <div class="main-grid">
       <section class="panel">
-        <h2>部署一覧 <button class="gate-indicator-btn" id="gateIndicatorBtn" title="プロジェクトオーナーチェックが必要です">🚦</button></h2>
+        <h2>部署一覧
+          <span class="indicator-group">
+            <button class="report-indicator-btn" id="reportIndicatorBtn" title="中間報告が届いています">📋</button>
+            <button class="gate-indicator-btn" id="gateIndicatorBtn" title="プロジェクトオーナーチェックが必要です">🚦</button>
+          </span>
+        </h2>
         <div id="deptDiagram"></div>
         <div id="deptList"></div>
       </section>
@@ -340,6 +399,38 @@
       <div class="gate-actions">
         <button class="pill-btn" id="gateAutoBtn" disabled title="回答を待たず、AIに想定回答を考えさせて進行を再開します"><img src="icons/ai_auto.png" alt="" style="width:16px;height:16px;border-radius:4px;">AIにお任せ</button>
         <button class="pill-btn primary" id="gateSubmit" disabled>回答を送信して再開</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 中間報告 モーダル ============ -->
+  <div class="modal-overlay" id="reportModalOverlay">
+    <div class="modal">
+      <span class="modal-close" id="reportModalClose">✕</span>
+      <h3>📋 中間報告</h3>
+      <div class="gate-prompt" id="reportSummary">-</div>
+      <div class="modal-section">
+        <h4>成果物ファイル</h4>
+        <div id="reportArtifactList" style="font-size:12px;color:var(--text-dim);line-height:1.8;"></div>
+      </div>
+
+      <div class="modal-section" id="reportRevisionSection" style="display:none;">
+        <h4>追加指示</h4>
+        <textarea id="reportInstructionInput" placeholder="修正・追加してほしい内容を入力してください"></textarea>
+        <div class="field" style="margin-top:10px;">
+          <label>参考ファイルを追加(任意・保存先フォルダ選択時は自動で格納されます)</label>
+          <input type="file" id="reportFileInput" multiple>
+        </div>
+        <div class="gate-actions">
+          <button class="pill-btn" id="reportRevisionCancel">キャンセル</button>
+          <button class="pill-btn primary" id="reportRevisionSubmit">この指示で差し戻す</button>
+        </div>
+      </div>
+
+      <div class="gate-actions" id="reportMainActions">
+        <button class="pill-btn" id="reportAutoBtn"><img src="icons/ai_auto.png" alt="" style="width:16px;height:16px;border-radius:4px;">AIにお任せ</button>
+        <button class="pill-btn" id="reportRevisionBtn">追加指示を出す</button>
+        <button class="pill-btn primary" id="reportCompleteBtn">完了とする</button>
       </div>
     </div>
   </div>
@@ -428,7 +519,7 @@
 
   /* 実行状態(設計書 2章 projectState 相当) */
   let state = {
-    project:{ title:'', overview:'', status:'待機中' },
+    project:{ title:'', overview:'', detail:'', status:'待機中' },
     stats:{ active:0, exchange:0, artifacts:0, hirameki:0 },
     deptStatus:{},   // id -> {status, task, progress, collaborating:[]}
     log:[],
@@ -436,6 +527,7 @@
     stepIndex:0,
     running:false,
     awaitingGate:false,
+    awaitingReport:false,
     dirHandle:null,
     timerId:null,
     pmDeptId:'qa',   // PM(進行役)に設定されている部署。階層ではなく役割ラベル
@@ -516,10 +608,15 @@
       relations:[] },
 
     { type:'system', deptUpdates:[],
-      text:'全部署が合意しました。プロトタイプを自動生成します。',
-      artifact:{deptId:'qa', filename:'プロトタイプ_v1.zip'},
-      finish:true },
+      text:'全部署が合意しました。プロトタイプを自動生成します。' },
+
+    { type:'interim-report',
+      deptUpdates:[],
+      reportSummary:'プロトタイプ(たたき台)ができました。内容をご確認のうえ、完了とするか追加の指示をお願いします。',
+      artifact:{deptId:'qa', filename:'プロトタイプ_v1.zip'} },
   ];
+  /* 追加指示を受けるとSCRIPTに動的にイベントを挿入するため、リセット時に元へ戻せるよう複製しておく */
+  const SCRIPT_TEMPLATE = JSON.parse(JSON.stringify(SCRIPT));
 
   /* ==================================================================
      4. レンダリング
@@ -806,7 +903,9 @@
     }
     try{
       state.dirHandle = await window.showDirectoryPicker();
-      $('folderStatus').textContent = '選択済み: ' + (state.dirHandle.name || '(フォルダ)');
+      const label = '選択済み: ' + (state.dirHandle.name || '(フォルダ)');
+      $('folderStatus').textContent = label;
+      if($('startFolderPath')) $('startFolderPath').textContent = state.dirHandle.name || '(フォルダ)';
     }catch(e){
       // ユーザーがキャンセルした場合は何もしない
     }
@@ -834,7 +933,7 @@
   }
 
   function advance(){
-    if(state.awaitingGate) return;
+    if(state.awaitingGate || state.awaitingReport) return;
     if(state.stepIndex >= SCRIPT.length){
       state.running = false;
       renderAll();
@@ -848,6 +947,13 @@
     if(ev.type === 'human-gate'){
       openHumanGate(ev.prompt);
       return; // stepIndexはゲート回答後に進める
+    }
+
+    if(ev.type === 'interim-report'){
+      if(ev.artifact){ settleArtifact(ev.artifact); }
+      renderAll();
+      openInterimReport(ev.reportSummary);
+      return; // stepIndexはオーナーの判断後に進める
     }
 
     if(ev.from){
@@ -939,6 +1045,97 @@
     const answer = await callAIForGateAnswer(promptText);
     $('gateInput').value = answer;
     submitHumanGate('human-gate-auto');
+  }
+
+  /* ---------- 中間報告(完成させず、オーナーが完了/追加指示を判断する) ---------- */
+  function renderReportArtifactList(){
+    const wrap = $('reportArtifactList');
+    wrap.innerHTML = state.artifacts.length
+      ? state.artifacts.map(a=>`・${escapeHtml(a.filename)}(${escapeHtml(deptById(a.deptId).name)})`).join('<br>')
+      : '(成果物はまだありません)';
+  }
+
+  function openInterimReport(summaryText){
+    state.awaitingReport = true;
+    clearTimeout(state.timerId);
+    $('reportIndicatorBtn').style.display = 'flex';
+    $('reportSummary').textContent = summaryText;
+    renderReportArtifactList();
+    $('reportRevisionSection').style.display = 'none';
+    $('reportMainActions').style.display = 'flex';
+  }
+
+  function closeReportModal(){
+    $('reportModalOverlay').classList.remove('open');
+  }
+
+  function completeProject(){
+    state.log.push({ kind:'system', text:'✅ プロジェクトオーナーが完了と判断しました。プロジェクトを完了します。' });
+    state.awaitingReport = false;
+    $('reportIndicatorBtn').style.display = 'none';
+    closeReportModal();
+    state.project.status = '完了';
+    state.running = false;
+    state.stepIndex++; // interim-reportイベントを消化
+    renderAll();
+  }
+
+  /* 追加指示を受け、段階1の簡易表現として短い追加対応ラウンドを台本に挿入する
+     (段階2では、ここで実際にAPIへ追加指示を渡して動的に部署間のやり取りを再生成する) */
+  function requestRevision(instructionText, fileNames){
+    state.log.push({ kind:'system', text:`📝 追加指示: 「${escapeHtml(instructionText)}」${fileNames && fileNames.length ? '(添付: '+fileNames.map(escapeHtml).join('、')+')' : ''}` });
+    state.awaitingReport = false;
+    $('reportIndicatorBtn').style.display = 'none';
+    closeReportModal();
+
+    const pmId = state.pmDeptId;
+    const pmChar = CHARACTERS.find(c=>c.deptId === pmId) || CHARACTERS[0];
+    const nextVersion = state.artifacts.length + 1;
+    const extraRound = [
+      { deptUpdates:[{id:pmId,status:'working',task:'追加指示への対応中',progress:50,collaborating:[]}],
+        from:pmChar.id, text:'追加指示を受け取りました。対応します。', expression:'neutral' },
+      { type:'interim-report',
+        deptUpdates:[{id:pmId,status:'done',task:'追加対応 完了',progress:100}],
+        reportSummary:'追加指示を反映した更新版ができました。内容をご確認のうえ、完了とするか追加の指示をお願いします。',
+        artifact:{deptId:pmId, filename:`プロトタイプ_v${nextVersion}.zip`} },
+    ];
+    SCRIPT.splice(state.stepIndex + 1, 0, ...extraRound);
+    state.stepIndex++; // 現在のinterim-reportイベントを消化
+    state.running = true;
+    renderAll();
+    scheduleNext(600);
+  }
+
+  /* 段階1向けスタブ:中間報告に対するオーナー判断をAIに考えさせる
+     (段階2でAnthropic APIに「完了で良いか、追加指示が必要か」を判断させる差し込みポイント) */
+  async function callAIForReportDecision(summaryText){
+    return { action:'complete', instruction:'' };
+  }
+
+  async function useAIForReport(){
+    $('reportMainActions').querySelectorAll('button').forEach(b=>b.disabled = true);
+    const decision = await callAIForReportDecision($('reportSummary').textContent);
+    $('reportMainActions').querySelectorAll('button').forEach(b=>b.disabled = false);
+    if(decision.action === 'revise'){
+      state.log.push({ kind:'human-gate-auto', text:'中間報告を確認し、追加指示が必要と判断しました。' });
+      requestRevision(decision.instruction || '(AIが生成した追加指示)', []);
+    } else {
+      state.log.push({ kind:'human-gate-auto', text:'中間報告を確認し、完了で問題ないと判断しました。' });
+      completeProject();
+    }
+  }
+
+  async function saveAttachedFiles(files){
+    if(!state.dirHandle || !files.length) return;
+    try{
+      const addDir = await state.dirHandle.getDirectoryHandle('追加指示_添付', { create:true });
+      for(const f of files){
+        const fh = await addDir.getFileHandle(f.name, { create:true });
+        const writable = await fh.createWritable();
+        await writable.write(await f.arrayBuffer());
+        await writable.close();
+      }
+    }catch(e){ console.error('添付ファイルの保存に失敗しました', e); }
   }
 
   /* ==================================================================
@@ -1058,14 +1255,17 @@
   $('startBtn').addEventListener('click', ()=>{
     const title = $('inputTitle').value.trim() || '無題のプロジェクト';
     const overview = $('inputOverview').value.trim();
+    const detail = $('inputDetail').value.trim();
     state.project.title = title;
     state.project.overview = overview;
+    state.project.detail = detail;
     state.project.status = '待機中';
     $('projectTitle').textContent = title;
     $('startScreen').style.display = 'none';
     $('dashboard').style.display = 'block';
     renderAll();
   });
+  $('startFolderBtn').addEventListener('click', chooseFolder);
 
   $('playBtn').addEventListener('click', togglePlay);
   $('folderBtn').addEventListener('click', chooseFolder);
@@ -1077,14 +1277,19 @@
     DEPARTMENTS.forEach(d=>{ state.deptStatus[d.id] = { status:'idle', task:'待機中', progress:0, collaborating:[] }; });
     state.stats = { active:0, exchange:0, artifacts:0, hirameki:0 };
     state.log = []; state.artifacts = []; state.stepIndex = 0; state.running = false; state.awaitingGate = false;
+    state.awaitingReport = false;
     state.relations = [];
     state.project.status = '待機中';
+    SCRIPT.length = 0;
+    SCRIPT.push(...JSON.parse(JSON.stringify(SCRIPT_TEMPLATE))); // 追加指示で挿入された分を破棄して元に戻す
     $('gateModalOverlay').classList.remove('open');
     $('gateIndicatorBtn').style.display = 'none';
     $('gateWaitingBadge').style.display = 'none';
     $('gatePrompt').textContent = '現在、確認待ちの項目はありません。';
     $('gateInput').disabled = true; $('gateInput').value = '';
     $('gateSubmit').disabled = true; $('gateAutoBtn').disabled = true;
+    $('reportModalOverlay').classList.remove('open');
+    $('reportIndicatorBtn').style.display = 'none';
     renderAll();
   });
 
@@ -1095,6 +1300,31 @@
   });
   $('gateSubmit').addEventListener('click', ()=> submitHumanGate('human-gate-answer'));
   $('gateAutoBtn').addEventListener('click', useAIForGate);
+
+  $('reportIndicatorBtn').addEventListener('click', ()=> $('reportModalOverlay').classList.add('open'));
+  $('reportModalClose').addEventListener('click', closeReportModal);
+  $('reportModalOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'reportModalOverlay') closeReportModal();
+  });
+  $('reportCompleteBtn').addEventListener('click', completeProject);
+  $('reportAutoBtn').addEventListener('click', useAIForReport);
+  $('reportRevisionBtn').addEventListener('click', ()=>{
+    $('reportRevisionSection').style.display = 'block';
+    $('reportMainActions').style.display = 'none';
+  });
+  $('reportRevisionCancel').addEventListener('click', ()=>{
+    $('reportRevisionSection').style.display = 'none';
+    $('reportMainActions').style.display = 'flex';
+  });
+  $('reportRevisionSubmit').addEventListener('click', async ()=>{
+    const text = $('reportInstructionInput').value.trim();
+    if(!text){ $('reportInstructionInput').focus(); return; }
+    const files = Array.from($('reportFileInput').files || []);
+    await saveAttachedFiles(files);
+    requestRevision(text, files.map(f=>f.name));
+    $('reportInstructionInput').value = '';
+    $('reportFileInput').value = '';
+  });
 
   $('settingsBtn').addEventListener('click', ()=>{
     renderPmDeptSelect();
