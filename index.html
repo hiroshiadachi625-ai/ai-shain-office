@@ -268,6 +268,7 @@
     flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     background:var(--panel);border:1px solid var(--border-soft);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text-dim);
   }
+  .folder-note{font-size:11px;color:var(--text-faint);margin:-10px 0 16px;line-height:1.6;}
   .field textarea{min-height:70px;resize:vertical;}
 
   /* ---------- Modal ---------- */
@@ -332,10 +333,11 @@
         <textarea id="inputDetail" placeholder="背景・制約条件・参考情報などがあれば"></textarea>
       </div>
       <div class="folder-row">
-        <span class="folder-label">📁 保存先</span>
+        <span class="folder-label">📁 参照・保存先</span>
         <span class="folder-path" id="startFolderPath">未選択(個別ダウンロードになります)</span>
         <button type="button" class="pill-btn" id="startFolderBtn" style="flex-shrink:0;">変更</button>
       </div>
+      <p class="folder-note">このフォルダにある既存の資料をAIが参照しつつ、成果物もここに格納します。</p>
       <button class="pill-btn primary" id="startBtn" style="width:100%;justify-content:center;">▶ プロジェクトを開始する</button>
     </div>
   </div>
@@ -351,7 +353,7 @@
       <span class="status-badge idle" id="statusBadge">待機中</span>
       <div class="topbar-actions">
         <button class="icon-btn" id="playBtn" title="自動進行 開始/一時停止">▶</button>
-        <button class="icon-btn" id="folderBtn" title="成果物の保存先フォルダを選択">📁</button>
+        <button class="icon-btn" id="folderBtn" title="参照・保存先フォルダを選択">📁</button>
         <button class="icon-btn" id="settingsBtn" title="設定(部署・キャラクター・APIキー)">⚙</button>
         <button class="icon-btn" id="resetBtn" title="リセットして最初から">🔄</button>
       </div>
@@ -368,7 +370,7 @@
       <section class="panel">
         <h2>部署一覧
           <span class="indicator-group">
-            <button class="report-indicator-btn" id="reportIndicatorBtn" title="中間報告が届いています">📋</button>
+            <button class="report-indicator-btn" id="reportIndicatorBtn" title="中間報告が届いています"><img src="icons/owner_check.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></button>
             <button class="gate-indicator-btn" id="gateIndicatorBtn" title="プロジェクトオーナーチェックが必要です">🚦</button>
           </span>
         </h2>
@@ -407,7 +409,7 @@
   <div class="modal-overlay" id="reportModalOverlay">
     <div class="modal">
       <span class="modal-close" id="reportModalClose">✕</span>
-      <h3>📋 中間報告</h3>
+      <h3><img src="icons/owner_check.png" alt="" style="width:22px;height:22px;border-radius:6px;vertical-align:-5px;margin-right:4px;"> 中間報告</h3>
       <div class="gate-prompt" id="reportSummary">-</div>
       <div class="modal-section">
         <h4>成果物ファイル</h4>
@@ -448,9 +450,10 @@
       </div>
 
       <div class="modal-section">
-        <h4>成果物の保存先フォルダ</h4>
+        <h4>参照・保存先フォルダ</h4>
         <button class="pill-btn" id="settingsFolderBtn">📁 フォルダを選択</button>
         <span class="note" id="folderStatus">未選択(未選択の場合は個別ダウンロードになります)</span>
+        <div class="note">プロジェクトが参照する既存資料の置き場であり、同時に成果物の保存先でもあります。単なる保存先フォルダではありません。</div>
       </div>
 
       <div class="modal-section">
