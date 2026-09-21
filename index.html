@@ -577,12 +577,24 @@
 
       <div class="settings-tab-panel" data-panel="ai" style="display:none;">
         <div class="modal-section">
-          <h4>Claude APIキー(次段階のAPI接続で使用予定・現在は未使用)</h4>
+          <h4>Claude APIキー</h4>
           <div class="api-key-row">
             <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:12px;">
             <button type="button" class="icon-btn" id="apiKeyToggle" title="表示/非表示">👁</button>
           </div>
-          <div class="note">この端末のブラウザ(localStorage)にのみ保存されます。共有PCでは入力しないでください。</div>
+          <div class="note">
+            この端末のブラウザ(localStorage)にのみ保存されます。共有PCでは入力しないでください。<br>
+            <b>入力すると、以後の自動進行は実際にClaude APIを呼び出して部署AIが応答します。未入力の場合は従来通りモック(台本)で動作します。</b>
+          </div>
+        </div>
+        <div class="modal-section">
+          <h4>使用モデル</h4>
+          <select id="apiModelSelect" style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px;">
+            <option value="claude-opus-5">Claude Opus 5(推奨・高精度)</option>
+            <option value="claude-sonnet-5">Claude Sonnet 5(バランス・低コスト)</option>
+            <option value="claude-haiku-4-5">Claude Haiku 4.5(最速・最安)</option>
+          </select>
+          <div class="note">部署の人数×やり取りの往復回数だけAPI呼び出しが発生します。コストが気になる場合はSonnet/Haikuを選んでください。</div>
         </div>
       </div>
 
@@ -662,6 +674,11 @@
     timerId:null,
     pmDeptId:'qa',   // PM(進行役)に設定されている部署。階層ではなく役割ラベル
     relations:[],    // 現在の部署間の関係。{type:'waiting',from,to} = 指示して回答待ち / {type:'discussing',members:[...]} = 協議中
+    // ---- 段階2:Claude API駆動の進行で使う状態(APIキー未設定時は使わない) ----
+    aiTurnCount:0,       // 暴走防止のための往復回数カウンタ
+    aiLastMessage:null,  // 直前に発言された内容(次の発言者への「孤立した」入力になる)
+    aiLastSpeakerDept:null,
+    aiNextSpeaker:null,  // 次に発言すべき部署id、または 'all'/'human'/'conclude'
   };
 
   DEPARTMENTS.forEach(d=>{
@@ -713,12 +730,13 @@
     SCRIPT.push(...JSON.parse(JSON.stringify(snap.script)));
   }
 
-  /* 段階1向けスタブ:セッションの要約・タイトルをAIに生成させる「仮想インデックス」
-     (段階2でAnthropic APIに実際の要約を生成させる差し込みポイント) */
+  /* セッションの要約・タイトルを表す「仮想インデックス」。
+     段階1(モック)はstepIndex、段階2(AI進行)はaiTurnCountを見て進捗を表現する。 */
   function stubGenerateIndex(){
     const lastHirameki = [...state.log].reverse().find(e=>e.kind==='hirameki');
     if(lastHirameki) return { summary: `💡 ${lastHirameki.title}: ${lastHirameki.text}` };
     if(state.project.status === '完了') return { summary:'完了済み' };
+    if(hasApiKey()) return { summary: `進行中(AI・${state.aiTurnCount}/${AI_MAX_TURNS}往復)` };
     return { summary: `進行中(${state.stepIndex}/${SCRIPT.length}ステップ)` };
   }
 
@@ -751,12 +769,112 @@
   }
 
   /* ==================================================================
-     2. 段階1向けスタブ:callDepartmentAI
-     (段階2でAnthropic API呼び出しに置き換える差し込みポイント)
+     2. Stage 2: Claude API呼び出し
+     各部署AIは「自分の役割・性格・制約」と「直前に受け取ったメッセージ」だけを
+     渡す孤立した呼び出しにする(要件定義書の設計原則: 全履歴を渡さない)。
   ================================================================== */
-  async function callDepartmentAI(character, incomingMessage, context){
-    // モック: 実際にはここでAPIを呼ぶ。今は事前に用意した台本(SCRIPT)を再生するだけ。
-    return { text: incomingMessage, proposedArtifact: context && context.artifact };
+  async function callClaudeAPI(systemPrompt, userText, maxTokens){
+    const apiKey = localStorage.getItem('aiOffice_apiKey');
+    if(!apiKey) throw new Error('APIキーが設定されていません');
+    const model = localStorage.getItem('aiOffice_apiModel') || 'claude-opus-5';
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens || 1024,
+        system: systemPrompt,
+        messages: [{ role:'user', content:userText }],
+      }),
+    });
+    if(!res.ok){
+      const errBody = await res.text().catch(()=>'');
+      throw new Error(`Claude APIエラー(${res.status}): ${errBody.slice(0,200)}`);
+    }
+    const data = await res.json();
+    const block = (data.content||[]).find(b=>b.type==='text');
+    return block ? block.text : '';
+  }
+
+  /* JSON以外の文字が混ざっていても、本文中の最初の{...}ブロックだけを拾ってパースする */
+  function parseJsonLoose(text){
+    const match = text.match(/\{[\s\S]*\}/);
+    if(!match) return null;
+    try{ return JSON.parse(match[0]); }catch(e){ return null; }
+  }
+
+  function buildDepartmentSystemPrompt(character){
+    const dept = deptById(character.deptId);
+    const deptList = DEPARTMENTS.map(d=>`${d.id}:${d.name}`).join('、');
+    return [
+      `あなたは「${dept.name}」(${dept.description})に所属する${character.name}です。`,
+      `性格: ${character.personality}`,
+      character.constraints.length ? `譲れない制約: ${character.constraints.join('、')}` : '',
+      `プロジェクト名: ${state.project.title}`,
+      state.project.overview ? `概要: ${state.project.overview}` : '',
+      state.project.detail ? `詳細: ${state.project.detail}` : '',
+      '',
+      '他部署または人間から届いたメッセージに対して、あなたの部署の立場から2〜3文で簡潔に応答してください。',
+      '前後に説明文を付けず、必ず以下のJSON形式のみで出力してください。',
+      '{',
+      '  "message": "あなたの発言内容",',
+      `  "next": "次に話すべき部署id(${deptList}のいずれか)。特定の相手がいなければ\\"all\\"、`
+        + '人間の判断が必要なら"human"、この件について合意・完了したなら"conclude"",',
+      '  "conflict": true または false (他部署の意見に明確に反対・対立している場合はtrue),',
+      '  "artifact": {"filename":"ファイル名.txt","content":"成果物の中身(簡潔な本文)"} または、成果物を生成しないなら null',
+      '}',
+    ].filter(Boolean).join('\n');
+  }
+
+  /* 段階2:部署AIの応答をClaude APIから取得する(孤立呼び出し: 渡すのは役割+直前メッセージのみ) */
+  async function callDepartmentAI(character, incomingMessage){
+    const system = buildDepartmentSystemPrompt(character);
+    const raw = await callClaudeAPI(system, incomingMessage, 700);
+    const parsed = parseJsonLoose(raw);
+    if(!parsed || typeof parsed.message !== 'string'){
+      return { message: raw.trim() || '(応答を取得できませんでした)', next:'all', conflict:false, artifact:null };
+    }
+    return {
+      message: parsed.message,
+      next: parsed.next || 'all',
+      conflict: !!parsed.conflict,
+      artifact: parsed.artifact || null,
+    };
+  }
+
+  /* 段階2向けスタブ→実装:プロジェクトオーナーチェックの想定回答をAIに考えさせる(孤立呼び出し) */
+  async function callAIForGateAnswerReal(promptText){
+    const system = [
+      'あなたはこのプロジェクトのプロジェクトオーナーの代理として、',
+      '次の確認事項に対する現実的な回答を3〜4文で考えてください。',
+      '前後の説明は付けず、回答本文のみを出力してください。',
+      `プロジェクト名: ${state.project.title}`,
+      state.project.overview ? `概要: ${state.project.overview}` : '',
+    ].filter(Boolean).join('\n');
+    const raw = await callClaudeAPI(system, promptText, 400);
+    return raw.trim();
+  }
+
+  /* 段階2向けスタブ→実装:中間報告に対するオーナー判断をAIに考えさせる(孤立呼び出し) */
+  async function callAIForReportDecisionReal(summaryText){
+    const system = [
+      'あなたはこのプロジェクトのプロジェクトオーナーです。以下の中間報告を確認し、',
+      '完了として良いか、追加の指示が必要かを判断してください。',
+      '必ず次のJSON形式のみで出力してください。',
+      '{"action":"complete"または"revise", "instruction":"revise の場合のみ、追加指示の本文"}',
+      `プロジェクト名: ${state.project.title}`,
+    ].join('\n');
+    const raw = await callClaudeAPI(system, summaryText, 300);
+    const parsed = parseJsonLoose(raw);
+    if(!parsed || (parsed.action!=='complete' && parsed.action!=='revise')){
+      return { action:'complete', instruction:'' };
+    }
+    return { action: parsed.action, instruction: parsed.instruction || '' };
   }
 
   /* ==================================================================
@@ -1118,7 +1236,10 @@
   ================================================================== */
   async function settleArtifact(artifactDef){
     const dept = deptById(artifactDef.deptId);
-    const content = `(モック成果物)\nファイル名: ${artifactDef.filename}\n担当部署: ${dept.name}\n生成日時: ${new Date().toLocaleString()}\n\nこれは段階1(モックデータ)の生成物です。段階2でClaude APIによる実際の成果物に置き換わります。`;
+    // artifactDef.contentがあれば(段階2:AIが実際に生成した内容)それを使い、
+    // なければ段階1のモック文言にフォールバックする。
+    const content = artifactDef.content
+      || `(モック成果物)\nファイル名: ${artifactDef.filename}\n担当部署: ${dept.name}\n生成日時: ${new Date().toLocaleString()}\n\nこれは段階1(モックデータ)の生成物です。段階2でClaude APIによる実際の成果物に置き換わります。`;
     const artifact = { ...artifactDef, saved:false, content };
 
     if(state.dirHandle){
@@ -1179,7 +1300,8 @@
 
   function scheduleNext(delay){
     if(!state.running) return;
-    state.timerId = setTimeout(advance, delay || 1800);
+    const fn = hasApiKey() ? advanceAI : advance;
+    state.timerId = setTimeout(fn, delay || 1800);
   }
 
   function advance(){
@@ -1246,9 +1368,96 @@
   function togglePlay(){
     if(state.project.status === '完了') return;
     state.running = !state.running;
-    if(state.running){ state.project.status = '進行中'; advance(); }
+    if(state.running){ state.project.status = '進行中'; (hasApiKey() ? advanceAI : advance)(); }
     else { clearTimeout(state.timerId); }
     renderAll();
+  }
+
+  /* ==================================================================
+     6.5 段階2:Claude API駆動の進行(部署AIが実際に応答し、次の発言者・
+     対立・成果物・人間判断の要否を自分で決める)。
+     台本(SCRIPT)は使わず、直前の1メッセージだけを次の発言者に渡す
+     「孤立した呼び出し」を繰り返すことで会話を進める。
+  ================================================================== */
+  const AI_MAX_TURNS = 14; // 暴走・コスト超過を防ぐための往復上限
+
+  async function advanceAI(){
+    if(state.awaitingGate || state.awaitingReport) return;
+    if(state.project.status === '完了'){ state.running = false; renderAll(); return; }
+
+    if(state.aiTurnCount >= AI_MAX_TURNS){
+      openInterimReport('既定のやり取り回数に達したため、ここまでの検討内容を中間報告します。');
+      renderAll();
+      return;
+    }
+
+    let speakerDeptId = state.aiNextSpeaker || state.pmDeptId;
+    if(speakerDeptId === 'all'){
+      const others = DEPARTMENTS.filter(d=>d.id !== state.aiLastSpeakerDept);
+      speakerDeptId = (others[Math.floor(Math.random()*others.length)] || DEPARTMENTS[0]).id;
+    }
+    if(speakerDeptId === 'human'){
+      openHumanGate(state.aiLastMessage || 'ご判断をお願いします。');
+      renderAll();
+      return;
+    }
+    if(speakerDeptId === 'conclude'){
+      openInterimReport(state.aiLastMessage || '検討がまとまりました。内容をご確認ください。');
+      renderAll();
+      return;
+    }
+
+    const character = CHARACTERS.find(c=>c.deptId === speakerDeptId) || CHARACTERS[0];
+    const dept = deptById(speakerDeptId);
+    applyDeptUpdates([{ id:speakerDeptId, status:'working', task:'検討中', progress:50 }]);
+    if(state.aiLastSpeakerDept && state.aiLastSpeakerDept !== speakerDeptId){
+      state.relations = [{ type:'waiting', from:state.aiLastSpeakerDept, to:speakerDeptId }];
+    }
+    renderAll();
+
+    const incoming = state.aiLastMessage
+      || `プロジェクト「${state.project.title}」について、${dept.name}の立場から検討を開始してください。`;
+
+    const thinkingEntry = { kind:'char', charId:character.id, thinking:true, domId:'thinking-tmp' };
+    state.log.push(thinkingEntry);
+    renderLog();
+
+    let result;
+    try{
+      result = await callDepartmentAI(character, incoming);
+    }catch(e){
+      state.log.pop();
+      state.log.push({ kind:'system', text:`⚠️ Claude API呼び出しに失敗しました: ${e.message}` });
+      state.running = false;
+      applyDeptUpdates([{ id:speakerDeptId, status:'idle', task:'待機中', progress:0 }]);
+      renderAll();
+      return;
+    }
+
+    state.log.pop();
+    state.log.push({ kind:'char', charId:character.id, text:result.message, expression: result.conflict ? 'troubled' : 'neutral' });
+    state.stats.exchange++;
+    state.aiTurnCount++;
+    applyDeptUpdates([{ id:speakerDeptId, status:'done', task:'発言完了', progress:100, collaborating:[] }]);
+
+    if(result.conflict && state.aiLastSpeakerDept){
+      state.relations = [{ type:'discussing', members:[speakerDeptId, state.aiLastSpeakerDept] }];
+    } else if(result.next && !['all','human','conclude'].includes(result.next)){
+      state.relations = [{ type:'waiting', from:speakerDeptId, to:result.next }];
+    } else {
+      state.relations = [];
+    }
+
+    if(result.artifact && result.artifact.filename){
+      await settleArtifact({ deptId:speakerDeptId, filename:result.artifact.filename, content:result.artifact.content || result.message });
+    }
+
+    state.aiLastMessage = result.message;
+    state.aiLastSpeakerDept = speakerDeptId;
+    state.aiNextSpeaker = result.next;
+
+    renderAll();
+    scheduleNext(1400);
   }
 
   /* ---------- プロジェクトオーナーチェック(旧:人間ゲート) ---------- */
@@ -1278,14 +1487,24 @@
     $('gateInput').disabled = true; $('gateInput').value = '';
     $('gateSubmit').disabled = true;
     $('gateAutoBtn').disabled = true;
-    state.stepIndex++; // プロジェクトオーナーチェックのイベントを消化
+    state.stepIndex++; // プロジェクトオーナーチェックのイベントを消化(段階1向け。段階2では未使用)
+    if(hasApiKey()){
+      // 人間の回答を、次にPM部署へ渡す入力として引き継ぐ(孤立呼び出しの原則を維持)
+      state.aiLastMessage = `プロジェクトオーナーの回答: ${val}`;
+      state.aiLastSpeakerDept = null;
+      state.aiNextSpeaker = state.pmDeptId;
+    }
     renderAll();
     scheduleNext(600);
   }
 
-  /* 段階1向けスタブ:プロジェクトオーナーチェックの想定回答をAIに考えさせる
-     (段階2でAnthropic APIに「この問いに対する妥当な回答」を生成させる差し込みポイント) */
+  /* プロジェクトオーナーチェックの想定回答をAIに考えさせる。
+     APIキー未設定時は段階1のモック回答にフォールバックする。 */
   async function callAIForGateAnswer(promptText){
+    if(hasApiKey()){
+      try{ return await callAIForGateAnswerReal(promptText); }
+      catch(e){ return `(AI呼び出しに失敗しました: ${e.message})`; }
+    }
     return '(AIによる想定回答)現場の反応は概ね好意的です。ただし、スキャン時に文字がかすれるケースがあるとの声があり、解像度設定の見直しを求められています。';
   }
 
@@ -1334,8 +1553,9 @@
     renderAll();
   }
 
-  /* 追加指示を受け、段階1の簡易表現として短い追加対応ラウンドを台本に挿入する
-     (段階2では、ここで実際にAPIへ追加指示を渡して動的に部署間のやり取りを再生成する) */
+  /* 追加指示を受けて検討を再開する。
+     段階2(APIキー設定済み)ではPM部署への新しい入力としてAI進行を再開し、
+     未設定時は段階1のモックとして短い追加対応ラウンドを台本に挿入する。 */
   function requestRevision(instructionText, fileNames){
     state.log.push({ kind:'system', text:`📝 追加指示: 「${escapeHtml(instructionText)}」${fileNames && fileNames.length ? '(添付: '+fileNames.map(escapeHtml).join('、')+')' : ''}` });
     state.awaitingReport = false;
@@ -1343,6 +1563,18 @@
     closeReportModal();
 
     const pmId = state.pmDeptId;
+
+    if(hasApiKey()){
+      state.aiLastMessage = `プロジェクトオーナーより追加指示: ${instructionText}`;
+      state.aiLastSpeakerDept = null;
+      state.aiNextSpeaker = pmId;
+      state.aiTurnCount = 0;
+      state.running = true;
+      renderAll();
+      scheduleNext(600);
+      return;
+    }
+
     const pmChar = CHARACTERS.find(c=>c.deptId === pmId) || CHARACTERS[0];
     const nextVersion = state.artifacts.length + 1;
     const extraRound = [
@@ -1360,9 +1592,13 @@
     scheduleNext(600);
   }
 
-  /* 段階1向けスタブ:中間報告に対するオーナー判断をAIに考えさせる
-     (段階2でAnthropic APIに「完了で良いか、追加指示が必要か」を判断させる差し込みポイント) */
+  /* 中間報告に対するオーナー判断をAIに考えさせる。
+     APIキー未設定時は段階1のモック(常に完了)にフォールバックする。 */
   async function callAIForReportDecision(summaryText){
+    if(hasApiKey()){
+      try{ return await callAIForReportDecisionReal(summaryText); }
+      catch(e){ return { action:'complete', instruction:'' }; }
+    }
     return { action:'complete', instruction:'' };
   }
 
@@ -1538,11 +1774,12 @@
     $('projectTitle').textContent = state.project.title;
     showScreen('dashboard');
     // 確認待ち状態で保存されたセッションは、インジケーター/モーダルの中身も復元する
+    // (段階2のAI進行中はSCRIPTを使わないため、aiLastMessageを優先的に使う)
     const ev = SCRIPT[state.stepIndex];
     if(state.awaitingGate){
-      openHumanGate(ev && ev.prompt || '確認が必要です。');
+      openHumanGate(state.aiLastMessage || (ev && ev.prompt) || '確認が必要です。');
     } else if(state.awaitingReport){
-      openInterimReport(ev && ev.reportSummary || '中間報告の確認をお願いします。');
+      openInterimReport(state.aiLastMessage || (ev && ev.reportSummary) || '中間報告の確認をお願いします。');
     }
     renderAll();
   }
@@ -1555,6 +1792,7 @@
     state.log = []; state.artifacts = []; state.stepIndex = 0; state.running = false; state.awaitingGate = false;
     state.awaitingReport = false;
     state.relations = [];
+    state.aiTurnCount = 0; state.aiLastMessage = null; state.aiLastSpeakerDept = null; state.aiNextSpeaker = null;
     SCRIPT.length = 0;
     SCRIPT.push(...JSON.parse(JSON.stringify(SCRIPT_TEMPLATE))); // 追加指示で挿入された分を破棄して元に戻す
     $('gateModalOverlay').classList.remove('open');
@@ -1729,6 +1967,7 @@
     try{
       const key = localStorage.getItem('aiOffice_apiKey');
       if(key) $('apiKeyInput').value = key;
+      $('apiModelSelect').value = localStorage.getItem('aiOffice_apiModel') || 'claude-opus-5';
     }catch(e){ console.warn('localStorageが利用できません', e); }
   }
   function saveApiKey(){
@@ -1736,7 +1975,11 @@
       const v = $('apiKeyInput').value.trim();
       if(v) localStorage.setItem('aiOffice_apiKey', v);
       else localStorage.removeItem('aiOffice_apiKey');
+      localStorage.setItem('aiOffice_apiModel', $('apiModelSelect').value);
     }catch(e){ console.warn('localStorageが利用できません', e); }
+  }
+  function hasApiKey(){
+    try{ return !!localStorage.getItem('aiOffice_apiKey'); }catch(e){ return false; }
   }
 
   /* ==================================================================
