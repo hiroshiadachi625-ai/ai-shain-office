@@ -600,11 +600,11 @@
      1. データモデル(設計書 2章に対応)
   ================================================================== */
   const DEPARTMENTS = [
-    { id:'qa',    name:'品質ゲートウェイ班', icon:'✅', description:'仕様確定・品質基準', iconKey:'qa' },
-    { id:'sales', name:'営業部',           icon:'🤝', description:'現場の使い勝手・顧客反応', iconKey:'sales' },
-    { id:'plan',  name:'業務企画部',       icon:'📋', description:'業務フロー設計・要件整理', iconKey:'plan' },
-    { id:'sys',   name:'システム部門',     icon:'🖥', description:'システム実装・技術検証', iconKey:'sys' },
-    { id:'sub',   name:'事務子会社',       icon:'🏢', description:'現場運用・実務担当', iconKey:'sub' },
+    { id:'qa',    name:'経営企画部',     icon:'✅', description:'全社戦略・意思決定の統括', iconKey:'qa' },
+    { id:'sales', name:'営業企画部',     icon:'🤝', description:'営業戦略・現場ニーズの反映', iconKey:'sales' },
+    { id:'plan',  name:'業務企画部',     icon:'📋', description:'業務フロー設計・要件整理', iconKey:'plan' },
+    { id:'sys',   name:'システム企画部', icon:'🖥', description:'システム要件定義・技術検討', iconKey:'sys' },
+    { id:'sub',   name:'コンプライアンス部門', icon:'🏢', description:'コンプライアンス・法務', iconKey:'sub' },
   ];
 
   /* ログの発言者を部署ごとに色分けするためのパレット(部署の並び順にローテーション割り当て) */
@@ -616,11 +616,11 @@
 
   /* 設定画面のアイコン選択肢 */
   const DEPT_ICON_CHOICES = [
-    { key:'qa',    label:'品質ゲートウェイ班' },
-    { key:'sales', label:'営業部' },
+    { key:'qa',    label:'経営企画部' },
+    { key:'sales', label:'営業企画部' },
     { key:'plan',  label:'業務企画部' },
-    { key:'sys',   label:'システム部門' },
-    { key:'sub',   label:'事務子会社' },
+    { key:'sys',   label:'システム企画部' },
+    { key:'sub',   label:'コンプライアンス部門' },
   ];
   const AVATAR_CHOICES = ['male1','male2','male3','male4','female1','female2','female3','female4'];
 
@@ -761,7 +761,7 @@
       from:'sato', text:'スキャンした帳票をREDOSの承認WFに接続する仕様で確定しました。', expression:'serious' },
 
     { deptUpdates:[{id:'qa',status:'done',task:'仕様確定 完了',progress:100}],
-      from:'sato', text:'仕様書を格納しました。営業部門、使い勝手の確認をお願いします。', expression:'neutral',
+      from:'sato', text:'仕様書を格納しました。営業企画部、使い勝手の確認をお願いします。', expression:'neutral',
       artifact:{deptId:'qa', filename:'仕様書_v1.pdf'},
       relations:[{type:'waiting', from:'qa', to:'sales'}] },
 
@@ -787,11 +787,11 @@
       from:'takahashi', text:'工数的にAPI連携は厳しいです。例外処理は別バッチにしましょう。', conflictPair:['plan','sys'], expression:'troubled' },
 
     { deptUpdates:[{id:'sub',status:'working',task:'運用可否を検討中',progress:30,collaborating:['plan','sys']}],
-      from:'tanaka', text:'でも現場運用の話なんですよ。事務子会社が回せないと意味がありません。', conflictPair:['plan','sys'], expression:'serious',
+      from:'tanaka', text:'でも法務・規制対応の話なんですよ。コンプライアンス部門の確認が通らないと意味がありません。', conflictPair:['plan','sys'], expression:'serious',
       relations:[{type:'discussing', members:['plan','sys','sub']}] },
 
     { deptUpdates:[],
-      from:'ito', text:'正直、今のままの運用手順だと私たちの人員では厳しいです。', conflictPair:['plan','sub'], expression:'troubled' },
+      from:'ito', text:'正直、今のままの手順だと審査(レビュー)が追いつきません。', conflictPair:['plan','sub'], expression:'troubled' },
 
     { deptUpdates:[],
       from:'takahashi', text:'工数超過は過去の障害事例Aの二の舞になりかねません。譲れません。', conflictPair:['plan','sys'], expression:'troubled' },
@@ -803,7 +803,7 @@
         {id:'sub',status:'done',task:'合意 完了',progress:100,collaborating:[]}
       ],
       title:'統合案',
-      text:'ミドルウェア層を挟むことで、業務企画の例外要件・システムの工数制約・事務子会社の運用負荷を同時に満たす代替案を提示。',
+      text:'ミドルウェア層を挟むことで、業務企画の例外要件・システムの工数制約・コンプライアンス部門の審査負荷を同時に満たす代替案を提示。',
       authors:['tanaka','takahashi'],
       artifact:{deptId:'sys', filename:'ミドルウェア設計案_v1.pdf'},
       relations:[] },
