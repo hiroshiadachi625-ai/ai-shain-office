@@ -289,9 +289,16 @@
 
   /* ---------- ランチャー画面(TOP:新規/過去から再開) ---------- */
   .launcher-wrap{max-width:880px;margin:40px auto;padding:0 16px;}
-  .launcher-topbar{display:flex;align-items:center;padding:4px 4px 18px;}
+  .launcher-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 18px;flex-wrap:wrap;}
   .launcher-topbar .start-logo{justify-content:flex-start;font-size:20px;}
   .launcher-topbar .start-logo .logo-mark{width:28px;height:28px;}
+  .launcher-menu{display:flex;align-items:center;gap:22px;}
+  .launcher-menu a{
+    font-size:13px;font-weight:600;color:var(--text-dim);text-decoration:none;transition:.15s;
+    white-space:nowrap;
+  }
+  .launcher-menu a:hover{color:var(--accent);}
+  .launcher-menu a.disabled{opacity:.4;pointer-events:none;}
   .launcher-hero-card{
     position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--border);
     background:linear-gradient(160deg,#fdfbf5 0%,#eef4ff 55%,#eaf1ff 100%);
@@ -1418,6 +1425,11 @@
       <div class="launcher-wrap">
         <div class="launcher-topbar">
           <span class="start-logo"><svg class="logo-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="20" cy="20" r="14.4" fill="none" stroke="#2563eb" stroke-width="6.4"/><path d="M33.53 24.93A14.4 14.4 0 0 1 8.97 29.26" stroke="#60a5fa" stroke-width="4.4" stroke-linecap="round" fill="none"/><circle cx="31.03" cy="10.74" r="3" fill="#f59e0b"/></svg>ORCHESTRA</span>
+          <nav class="launcher-menu">
+            <a href="#" id="launcherHistoryLink" class="${projects.length===0?'disabled':''}">📂 履歴</a>
+            <a href="#" id="launcherSettingsLink">⚙ 設定</a>
+            <a href="https://github.com/hiroshiadachi625-ai/orchestra" target="_blank" rel="noopener">GitHub ↗</a>
+          </nav>
         </div>
         <div class="launcher-hero-card">
           <div class="launcher-blob-a"></div>
@@ -1454,8 +1466,12 @@
       </div>
     `;
     $('newProjectCardBtn').addEventListener('click', startNewProjectFlow);
+    $('launcherSettingsLink').addEventListener('click', e=>{ e.preventDefault(); openSettings(); });
     if(projects.length){
       $('resumeCardBtn').addEventListener('click', ()=>{ renderProjectList(); showScreen('resumeProjectsScreen'); });
+      $('launcherHistoryLink').addEventListener('click', e=>{ e.preventDefault(); renderProjectList(); showScreen('resumeProjectsScreen'); });
+    } else {
+      $('launcherHistoryLink').addEventListener('click', e=> e.preventDefault());
     }
     if(recent){
       $('quickResumeBtn').addEventListener('click', ()=> resumeSession(recent.project.id, recent.session.id));
@@ -1822,13 +1838,14 @@
     $('reportFileInput').value = '';
   });
 
-  $('settingsBtn').addEventListener('click', ()=>{
+  function openSettings(){
     renderPmDeptSelect();
     renderDeptEditList();
     renderCharEditList();
     loadApiKey();
     $('settingsOverlay').classList.add('open');
-  });
+  }
+  $('settingsBtn').addEventListener('click', openSettings);
   $('addDeptBtn').addEventListener('click', addDepartment);
   $('pmDeptSelect').addEventListener('change', e=>{
     state.pmDeptId = e.target.value;
