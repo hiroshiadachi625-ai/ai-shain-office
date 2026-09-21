@@ -88,8 +88,23 @@
   .stat-value{font-size:24px;font-weight:700;line-height:1;}
   .stat-label{font-size:12px;color:var(--text-dim);margin-top:4px;}
 
-  /* ---------- Main grid ---------- */
-  .main-grid{display:grid;grid-template-columns:280px 1fr 260px;gap:16px;align-items:start;}
+  /* ---------- 確認待ち・進行誘導バナー ---------- */
+  .action-banner{
+    display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:600;
+  }
+  .action-banner.primary{background:var(--accent-soft);border:1px solid rgba(96,165,250,.35);color:var(--accent-2);}
+  .action-banner.warn{background:var(--hirameki-soft);border:1px solid var(--hirameki-border);color:#7c4a03;}
+  .action-banner.info{background:var(--accent-soft);border:1px solid rgba(96,165,250,.35);color:var(--accent-2);}
+
+  /* ---------- Main grid(ログ主役・左右パネルのドロワー開閉) ---------- */
+  .main-grid{display:grid;grid-template-columns:280px minmax(0,1fr) 260px;gap:16px;align-items:start;transition:grid-template-columns .2s;}
+  .main-grid > .panel{min-width:0;overflow:hidden;}
+  .main-grid.collapse-left{grid-template-columns:0px minmax(0,1fr) 260px;}
+  .main-grid.collapse-right{grid-template-columns:280px minmax(0,1fr) 0px;}
+  .main-grid.collapse-left.collapse-right{grid-template-columns:0px minmax(0,1fr) 0px;}
+  .main-grid.collapse-left > .panel:nth-child(1),
+  .main-grid.collapse-right > .panel:nth-child(3){padding:0;border:none;opacity:0;}
   @media (max-width:1100px){.main-grid{grid-template-columns:1fr;}}
   @media (max-width:640px){
     .app{padding:14px 12px 40px;}
@@ -177,7 +192,7 @@
   }
   .artifact-ext img{width:100%;height:100%;object-fit:cover;display:block;}
   .artifact-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .artifact-sub{font-size:10px;color:var(--text-faint);}
+  .artifact-sub{font-size:11px;color:var(--text-faint);}
   .artifact-status{font-size:14px;flex-shrink:0;cursor:pointer;}
   .empty-hint{color:var(--text-faint);font-size:12px;text-align:center;padding:20px 8px;}
 
@@ -214,7 +229,7 @@
   .gate-waiting-badge{font-size:11px;color:var(--hirameki);background:var(--hirameki-soft);padding:2px 8px;border-radius:999px;margin-left:8px;}
 
   /* ---------- 部署一覧:協議中/回答待ちラベル ---------- */
-  .dept-relation-label{font-size:10px;padding:1px 7px;border-radius:999px;margin-left:6px;font-weight:600;white-space:nowrap;}
+  .dept-relation-label{font-size:11px;padding:1px 7px;border-radius:999px;margin-left:6px;font-weight:600;white-space:nowrap;}
   .dept-relation-label.discussing{background:var(--hirameki-soft);color:var(--hirameki);}
   .dept-relation-label.waiting{background:var(--accent-soft);color:var(--accent);}
 
@@ -340,6 +355,27 @@
   .modal-close{float:right;cursor:pointer;color:var(--text-dim);font-size:18px;}
   .note{font-size:11px;color:var(--text-faint);margin-top:6px;line-height:1.6;}
   .footer-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;}
+
+  /* ---------- 部署詳細のスライドインサイドパネル(alert()の代替) ---------- */
+  .side-panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:55;}
+  .side-panel-overlay.open{display:block;}
+  .side-panel{
+    position:fixed;top:0;right:0;bottom:0;width:320px;max-width:88vw;background:var(--panel);
+    box-shadow:-10px 0 30px rgba(30,42,58,.18);padding:22px;overflow-y:auto;
+    transform:translateX(100%);transition:transform .25s;
+  }
+  .side-panel-overlay.open .side-panel{transform:translateX(0);}
+
+  /* ---------- 設定モーダルのタブ ---------- */
+  .settings-tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .settings-tab{
+    background:none;border:none;padding:8px 10px;font-size:12px;font-weight:600;color:var(--text-dim);
+    cursor:pointer;border-bottom:2px solid transparent;
+  }
+  .settings-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .settings-tab:hover{color:var(--accent);}
+  .api-key-row{display:flex;gap:6px;}
+  .api-key-row input{flex:1;}
 </style>
 </head>
 <body>
@@ -400,6 +436,8 @@
       <div class="topbar-actions">
         <button class="icon-btn" id="playBtn" title="自動進行 開始/一時停止">▶</button>
         <button class="icon-btn" id="folderBtn" title="参照・保存先フォルダを選択">📁</button>
+        <button class="icon-btn" id="deptPanelToggleBtn" title="部署一覧パネルの表示/非表示">🏢</button>
+        <button class="icon-btn" id="artifactPanelToggleBtn" title="成果物一覧パネルの表示/非表示">📦</button>
         <button class="icon-btn" id="settingsBtn" title="設定(部署・キャラクター・APIキー)">⚙</button>
         <button class="icon-btn" id="resetBtn" title="リセットして最初から">🔄</button>
       </div>
@@ -411,6 +449,8 @@
       <div class="stat-card"><div class="stat-icon"><img src="icons/stat_artifacts.png" alt=""></div><div><div class="stat-value" id="statArtifacts">0</div><div class="stat-label">生成された成果物</div></div></div>
       <div class="stat-card"><div class="stat-icon"><img src="icons/stat_hirameki.png" alt=""></div><div><div class="stat-value" id="statHirameki">0</div><div class="stat-label">発生した「ひらめき」</div></div></div>
     </div>
+
+    <div class="action-banner" id="actionBanner"></div>
 
     <div class="main-grid">
       <section class="panel">
@@ -435,6 +475,11 @@
       </section>
     </div>
 
+  </div>
+
+  <!-- ============ 部署詳細のスライドインサイドパネル(alert()の代替) ============ -->
+  <div class="side-panel-overlay" id="deptDetailOverlay">
+    <div class="side-panel" id="deptDetailPanel"></div>
   </div>
 
   <!-- ============ プロジェクトオーナーチェック モーダル ============ -->
@@ -489,36 +534,54 @@
       <span class="modal-close" id="settingsClose">✕</span>
       <h3>⚙ 設定</h3>
 
-      <div class="modal-section">
-        <h4>Claude APIキー(次段階のAPI接続で使用予定・現在は未使用)</h4>
-        <input type="text" id="apiKeyInput" placeholder="sk-ant-..." style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:12px;">
-        <div class="note">この端末のブラウザ(localStorage)にのみ保存されます。共有PCでは入力しないでください。</div>
+      <div class="settings-tabs">
+        <button type="button" class="settings-tab active" data-tab="basic">⚙️ 基本</button>
+        <button type="button" class="settings-tab" data-tab="org">🏢 組織・部署</button>
+        <button type="button" class="settings-tab" data-tab="ai">🤖 AI・モデル</button>
+        <button type="button" class="settings-tab" data-tab="folder">📁 保存先</button>
       </div>
 
-      <div class="modal-section">
-        <h4>参照・保存先フォルダ</h4>
-        <button class="pill-btn" id="settingsFolderBtn">📁 フォルダを選択</button>
-        <span class="note" id="folderStatus">未選択(未選択の場合は個別ダウンロードになります)</span>
-        <div class="note">プロジェクトが参照する既存資料の置き場であり、同時に成果物の保存先でもあります。単なる保存先フォルダではありません。</div>
+      <div class="settings-tab-panel" data-panel="basic">
+        <div class="modal-section">
+          <h4>PM(進行役)部署</h4>
+          <select id="pmDeptSelect" style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px;"></select>
+          <div class="note">部署間に上下関係はありませんが、進行を取りまとめる役割として1部署をPMに指定できます。部署一覧の図に王冠マークで表示されます。</div>
+        </div>
       </div>
 
-      <div class="modal-section">
-        <h4>PM(進行役)部署</h4>
-        <select id="pmDeptSelect" style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px;"></select>
-        <div class="note">部署間に上下関係はありませんが、進行を取りまとめる役割として1部署をPMに指定できます。部署一覧の図に王冠マークで表示されます。</div>
+      <div class="settings-tab-panel" data-panel="org" style="display:none;">
+        <div class="modal-section">
+          <h4>部署テンプレート(名前・役割)</h4>
+          <div id="deptEditList"></div>
+          <button class="pill-btn" id="addDeptBtn" style="margin-top:4px;">＋ 部署を追加</button>
+          <div class="note">部署名や役割の説明文をここで変更できます。画面上の表示(部署一覧・キャラクター編集欄のバッジなど)にすぐ反映されます。新規追加した部署にはまだ専用アイコン画像がないため、仮の絵文字アイコンで表示されます。</div>
+        </div>
+
+        <div class="modal-section">
+          <h4>キャラクター テンプレート(名前・性格・制約)</h4>
+          <div id="charEditList"></div>
+          <div class="note">ここでの編集は次段階のAPI接続時のキャラクター設定として使用されます。今回のモックデモの進行内容(台本)には反映されません。</div>
+        </div>
       </div>
 
-      <div class="modal-section">
-        <h4>部署テンプレート(名前・役割)</h4>
-        <div id="deptEditList"></div>
-        <button class="pill-btn" id="addDeptBtn" style="margin-top:4px;">＋ 部署を追加</button>
-        <div class="note">部署名や役割の説明文をここで変更できます。画面上の表示(部署一覧・キャラクター編集欄のバッジなど)にすぐ反映されます。新規追加した部署にはまだ専用アイコン画像がないため、仮の絵文字アイコンで表示されます。</div>
+      <div class="settings-tab-panel" data-panel="ai" style="display:none;">
+        <div class="modal-section">
+          <h4>Claude APIキー(次段階のAPI接続で使用予定・現在は未使用)</h4>
+          <div class="api-key-row">
+            <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:12px;">
+            <button type="button" class="icon-btn" id="apiKeyToggle" title="表示/非表示">👁</button>
+          </div>
+          <div class="note">この端末のブラウザ(localStorage)にのみ保存されます。共有PCでは入力しないでください。</div>
+        </div>
       </div>
 
-      <div class="modal-section">
-        <h4>キャラクター テンプレート(名前・性格・制約)</h4>
-        <div id="charEditList"></div>
-        <div class="note">ここでの編集は次段階のAPI接続時のキャラクター設定として使用されます。今回のモックデモの進行内容(台本)には反映されません。</div>
+      <div class="settings-tab-panel" data-panel="folder" style="display:none;">
+        <div class="modal-section">
+          <h4>参照・保存先フォルダ</h4>
+          <button class="pill-btn" id="settingsFolderBtn">📁 フォルダを選択</button>
+          <span class="note" id="folderStatus">未選択(未選択の場合は個別ダウンロードになります)</span>
+          <div class="note">プロジェクトが参照する既存資料の置き場であり、同時に成果物の保存先でもあります。単なる保存先フォルダではありません。</div>
+        </div>
       </div>
 
       <div class="footer-actions">
@@ -543,6 +606,13 @@
     { id:'sys',   name:'システム部門',     icon:'🖥', description:'システム実装・技術検証', iconKey:'sys' },
     { id:'sub',   name:'事務子会社',       icon:'🏢', description:'現場運用・実務担当', iconKey:'sub' },
   ];
+
+  /* ログの発言者を部署ごとに色分けするためのパレット(部署の並び順にローテーション割り当て) */
+  const DEPT_COLORS = ['#2563eb','#d97706','#16a34a','#7c3aed','#db2777','#0891b2','#ca8a04','#be123c'];
+  function deptColor(deptId){
+    const idx = DEPARTMENTS.findIndex(d=>d.id===deptId);
+    return DEPT_COLORS[(idx<0?0:idx) % DEPT_COLORS.length];
+  }
 
   /* 設定画面のアイコン選択肢 */
   const DEPT_ICON_CHOICES = [
@@ -615,13 +685,21 @@
     return p && p.sessions.find(s=>s.id===sessionId);
   }
 
-  /* dirHandle/timerIdはシリアライズ不可のため除いてスナップショットを取る */
+  /* dirHandle/timerIdはシリアライズ不可のため除いてスナップショットを取る。
+     SCRIPTは「追加指示」で伸びることがあるモジュール共有の変数なので、
+     セッションごとに台本の状態も一緒に保存/復元しないと、別セッションに
+     切り替えた際にstepIndexと台本の内容がずれてしまう。 */
   function snapshotState(){
     const { dirHandle, timerId, ...rest } = state;
-    return JSON.parse(JSON.stringify(rest));
+    return {
+      state: JSON.parse(JSON.stringify(rest)),
+      script: JSON.parse(JSON.stringify(SCRIPT)),
+    };
   }
   function restoreStateFromSnapshot(snap){
-    state = Object.assign(JSON.parse(JSON.stringify(snap)), { dirHandle:null, timerId:null, running:false });
+    state = Object.assign(JSON.parse(JSON.stringify(snap.state)), { dirHandle:null, timerId:null, running:false });
+    SCRIPT.length = 0;
+    SCRIPT.push(...JSON.parse(JSON.stringify(snap.script)));
   }
 
   /* 段階1向けスタブ:セッションの要約・タイトルをAIに生成させる「仮想インデックス」
@@ -630,7 +708,7 @@
     const lastHirameki = [...state.log].reverse().find(e=>e.kind==='hirameki');
     if(lastHirameki) return { summary: `💡 ${lastHirameki.title}: ${lastHirameki.text}` };
     if(state.project.status === '完了') return { summary:'完了済み' };
-    return { summary: `進行中(${state.stepIndex}/${SCRIPT_TEMPLATE.length}ステップ)` };
+    return { summary: `進行中(${state.stepIndex}/${SCRIPT.length}ステップ)` };
   }
 
   /* ログ更新・成果物生成のたびに呼ばれ、現在のセッションを自動保存する */
@@ -810,16 +888,25 @@
   function showDeptDetail(deptId){
     const d = deptById(deptId), st = state.deptStatus[deptId];
     const members = CHARACTERS.filter(c=>c.deptId===deptId).map(c=>c.name).join('、') || '(未設定)';
-    alert(`${d.icon} ${d.name}\n\n担当分野: ${d.description}\n状態: ${st.status}\n作業内容: ${st.task}\n進捗: ${st.progress}%\nメンバー: ${members}`);
+    $('deptDetailPanel').innerHTML = `
+      <span class="modal-close" id="deptDetailClose">✕</span>
+      <h3><span class="dept-icon" style="width:26px;height:26px;display:inline-flex;vertical-align:-7px;margin-right:6px;">${deptIconHtml(d)}</span>${escapeHtml(d.name)}</h3>
+      <div class="modal-section"><h4>担当分野</h4><p style="font-size:13px;margin:0;">${escapeHtml(d.description)}</p></div>
+      <div class="modal-section"><h4>状態</h4><p style="font-size:13px;margin:0;">${escapeHtml(st.status)} ｜ ${escapeHtml(st.task)} ｜ 進捗${st.progress}%</p></div>
+      <div class="modal-section"><h4>メンバー</h4><p style="font-size:13px;margin:0;">${escapeHtml(members)}</p></div>
+    `;
+    $('deptDetailClose').addEventListener('click', ()=> $('deptDetailOverlay').classList.remove('open'));
+    $('deptDetailOverlay').classList.add('open');
   }
 
   function renderLog(){
     const wrap = $('logList');
+    const wasNearBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 60;
     wrap.innerHTML = '';
     state.log.forEach(entry=>{
       wrap.appendChild(buildLogNode(entry));
     });
-    wrap.scrollTop = wrap.scrollHeight;
+    if(wasNearBottom) wrap.scrollTop = wrap.scrollHeight;
   }
 
   function buildLogNode(entry){
@@ -856,13 +943,14 @@
     const c = charById(entry.charId);
     const dName = deptById(c.deptId).name;
     const expr = entry.thinking ? 'neutral' : (entry.expression || 'neutral');
+    const color = deptColor(c.deptId);
     div.className = 'msg';
     div.id = entry.domId || '';
     div.innerHTML = `
       <div class="avatar face"><img src="avatars/${c.avatarId}_${expr}.png" alt="${c.name}"></div>
       <div class="msg-body">
         <div class="msg-name">${c.name}(${dName})</div>
-        <div class="msg-bubble ${entry.thinking?'thinking':''}">${entry.thinking ? '検討中…' : escapeHtml(entry.text)}</div>
+        <div class="msg-bubble ${entry.thinking?'thinking':''}" style="border-left:3px solid ${color};">${entry.thinking ? '検討中…' : escapeHtml(entry.text)}</div>
       </div>`;
     return div;
   }
@@ -889,11 +977,9 @@
           <div class="artifact-name">${a.filename}</div>
           <div class="artifact-sub">${deptById(a.deptId).name}</div>
         </div>
-        <div class="artifact-status" title="${a.saved?'保存先フォルダに保存済み':'クリックしてダウンロード'}">${a.saved?'✅':'⬇'}</div>
+        <div class="artifact-status" title="${a.saved?'保存済み(クリックで再ダウンロード)':'クリックしてダウンロード'}">${a.saved?'✅':'⬇'}</div>
       `;
-      if(!a.saved){
-        row.querySelector('.artifact-status').addEventListener('click', ()=> downloadArtifact(a));
-      }
+      row.querySelector('.artifact-status').addEventListener('click', ()=> downloadArtifact(a));
       wrap.appendChild(row);
     });
   }
@@ -901,6 +987,7 @@
   function renderAll(){
     renderStats();
     renderStatusBadge();
+    renderActionBanner();
     renderDeptDiagram();
     renderDeptList();
     renderLog();
@@ -909,15 +996,43 @@
     persistActiveSession();
   }
 
+  /* 開始直後の誘導や確認待ちを、見落としにくい固定バナーとしても表示する
+     (アイコンのポップアップ表示のみ、という既存方針は維持しつつ補助的に追加) */
+  function renderActionBanner(){
+    const el = $('actionBanner');
+    if(state.awaitingGate){
+      el.className = 'action-banner warn';
+      el.innerHTML = `⚠️ プロジェクトオーナーの確認待ちのタスクがあります <button class="pill-btn primary" id="bannerGateBtn">回答を開く</button>`;
+      el.style.display = 'flex';
+      $('bannerGateBtn').addEventListener('click', ()=> $('gateModalOverlay').classList.add('open'));
+      return;
+    }
+    if(state.awaitingReport){
+      el.className = 'action-banner info';
+      el.innerHTML = `📋 中間報告が届いています <button class="pill-btn primary" id="bannerReportBtn">確認を開く</button>`;
+      el.style.display = 'flex';
+      $('bannerReportBtn').addEventListener('click', ()=> $('reportModalOverlay').classList.add('open'));
+      return;
+    }
+    if(!state.running && state.project.status==='待機中' && state.stepIndex===0){
+      el.className = 'action-banner primary';
+      el.innerHTML = `🚀 プロジェクトが初期化されました。 <button class="pill-btn primary" id="bannerStartBtn">自動進行をスタートする ➔</button>`;
+      el.style.display = 'flex';
+      $('bannerStartBtn').addEventListener('click', togglePlay);
+      return;
+    }
+    el.style.display = 'none';
+  }
+
   /* 部署間の関係図(階層なし・現在の「指示待ち」「協議中」を可視化) */
   function renderDeptDiagram(){
     const wrap = $('deptDiagram');
     const depts = DEPARTMENTS;
     const n = depts.length;
-    const size = 260;
+    const size = Math.max(260, 40*n);
     const cx = size/2, cy = size/2;
     const R = size/2 - 46;
-    const nodeR = 22;
+    const nodeR = n > 8 ? 16 : 22;
 
     const pos = {};
     depts.forEach((d,i)=>{
@@ -963,8 +1078,8 @@
           <circle cx="${p.x}" cy="${p.y}" r="${nodeR}" fill="var(--panel)" stroke="${ringColor}" stroke-width="2.5" ${dash}/>
           ${iconContent}
           ${isPm ? `<text x="${p.x+nodeR-2}" y="${p.y-nodeR+4}" font-size="13" text-anchor="middle">👑</text>` : ''}
-          <text x="${p.x}" y="${p.y+nodeR+13}" text-anchor="middle" font-size="9.5" fill="var(--text-dim)">${escapeHtml(d.name)}</text>
-          ${(()=>{ const lbl = deptRelationLabel(d.id); return lbl ? `<text x="${p.x}" y="${p.y+nodeR+25}" text-anchor="middle" font-size="9" font-weight="700" fill="${lbl.cls==='discussing'?'var(--hirameki)':'var(--accent)'}">${lbl.text}</text>` : ''; })()}
+          <text x="${p.x}" y="${p.y+nodeR+13}" text-anchor="middle" font-size="10.5" fill="var(--text-dim)">${escapeHtml(d.name)}</text>
+          ${(()=>{ const lbl = deptRelationLabel(d.id); return lbl ? `<text x="${p.x}" y="${p.y+nodeR+25}" text-anchor="middle" font-size="10" font-weight="700" fill="${lbl.cls==='discussing'?'var(--hirameki)':'var(--accent)'}">${lbl.text}</text>` : ''; })()}
         </g>`;
     });
 
@@ -1136,6 +1251,8 @@
     const input = $('gateInput'); input.disabled = false; input.value = '';
     $('gateSubmit').disabled = false;
     $('gateAutoBtn').disabled = false;
+    renderActionBanner();
+    persistActiveSession(); // awaitingGate=trueの状態も保存しておかないと再開時に確認待ちが失われる
   }
 
   function submitHumanGate(kind){
@@ -1187,6 +1304,8 @@
     renderReportArtifactList();
     $('reportRevisionSection').style.display = 'none';
     $('reportMainActions').style.display = 'flex';
+    renderActionBanner();
+    persistActiveSession(); // awaitingReport=trueの状態も保存しておかないと再開時に確認待ちが失われる
   }
 
   function closeReportModal(){
@@ -1363,7 +1482,7 @@
         <div class="session-list">
           ${sorted.map(s=>`
             <div class="session-card" data-id="${s.id}">
-              <span class="session-card-title">📄 ${escapeHtml(s.title)}${s.snapshot && s.snapshot.project.status==='完了' ? '(完了)' : '(前回の続き)'}</span>
+              <span class="session-card-title">📄 ${escapeHtml(s.title)}${s.snapshot && s.snapshot.state.project.status==='完了' ? '(完了)' : '(前回の続き)'}</span>
               <span class="session-card-sub">${formatDate(s.updatedAt)}${s.summary ? ' ｜ '+escapeHtml(s.summary) : ''}</span>
             </div>
           `).join('')}
@@ -1407,6 +1526,13 @@
     clearTimeout(state.timerId);
     $('projectTitle').textContent = state.project.title;
     showScreen('dashboard');
+    // 確認待ち状態で保存されたセッションは、インジケーター/モーダルの中身も復元する
+    const ev = SCRIPT[state.stepIndex];
+    if(state.awaitingGate){
+      openHumanGate(ev && ev.prompt || '確認が必要です。');
+    } else if(state.awaitingReport){
+      openInterimReport(ev && ev.reportSummary || '中間報告の確認をお願いします。');
+    }
     renderAll();
   }
 
@@ -1507,6 +1633,12 @@
       btn.addEventListener('click', ()=>{ onPick(btn.dataset.key); box.remove(); });
     });
   }
+
+  /* アイコン選択パレットの外側をクリックしたら自動で閉じる */
+  document.addEventListener('click', e=>{
+    if(e.target.closest('.icon-picker-box') || e.target.closest('.dept-row-icon') || e.target.closest('.char-avatar-thumb')) return;
+    document.querySelectorAll('.icon-picker-box').forEach(el=>el.remove());
+  });
 
   function renderDeptEditList(){
     const wrap = $('deptEditList');
@@ -1611,6 +1743,13 @@
   $('folderBtn').addEventListener('click', chooseFolder);
   $('settingsFolderBtn').addEventListener('click', chooseFolder);
 
+  $('deptPanelToggleBtn').addEventListener('click', ()=> document.querySelector('.main-grid').classList.toggle('collapse-left'));
+  $('artifactPanelToggleBtn').addEventListener('click', ()=> document.querySelector('.main-grid').classList.toggle('collapse-right'));
+
+  $('deptDetailOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'deptDetailOverlay') $('deptDetailOverlay').classList.remove('open');
+  });
+
   $('resetBtn').addEventListener('click', ()=>{
     if(!confirm('進行中のログ・成果物をリセットして最初からやり直します。よろしいですか?')) return;
     resetSimulationState();
@@ -1662,6 +1801,19 @@
   $('pmDeptSelect').addEventListener('change', e=>{
     state.pmDeptId = e.target.value;
     renderAll();
+  });
+  $('apiKeyToggle').addEventListener('click', ()=>{
+    const inp = $('apiKeyInput');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+  document.querySelectorAll('.settings-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.settings-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.settings-tab-panel').forEach(p=>{
+        p.style.display = (p.dataset.panel === btn.dataset.tab) ? 'block' : 'none';
+      });
+    });
   });
   $('settingsClose').addEventListener('click', ()=> $('settingsOverlay').classList.remove('open'));
   $('settingsSave').addEventListener('click', ()=>{
