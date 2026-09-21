@@ -445,12 +445,12 @@
       </div>
       <span class="status-badge idle" id="statusBadge">待機中</span>
       <div class="topbar-actions">
-        <button class="icon-btn" id="playBtn" title="自動進行 開始/一時停止">▶</button>
-        <button class="icon-btn" id="folderBtn" title="参照・保存先フォルダを選択">📁</button>
-        <button class="icon-btn" id="deptPanelToggleBtn" title="部署一覧パネルの表示/非表示">🏢</button>
-        <button class="icon-btn" id="artifactPanelToggleBtn" title="成果物一覧パネルの表示/非表示">📦</button>
-        <button class="icon-btn" id="settingsBtn" title="設定(部署・キャラクター・APIキー)">⚙</button>
-        <button class="icon-btn" id="resetBtn" title="リセットして最初から">🔄</button>
+        <button class="icon-btn" id="playBtn" title="自動進行 開始/一時停止"><img src="icons/ui_play.png" alt="" style="width:22px;height:22px;border-radius:6px;"></button>
+        <button class="icon-btn" id="folderBtn" title="参照・保存先フォルダを選択"><img src="icons/ui_folder.png" alt="" style="width:22px;height:22px;border-radius:6px;"></button>
+        <button class="icon-btn" id="deptPanelToggleBtn" title="部署一覧パネルの表示/非表示"><img src="icons/ui_orgchart.png" alt="" style="width:22px;height:22px;border-radius:6px;"></button>
+        <button class="icon-btn" id="artifactPanelToggleBtn" title="成果物一覧パネルの表示/非表示"><img src="icons/ui_archive.png" alt="" style="width:22px;height:22px;border-radius:6px;"></button>
+        <button class="icon-btn" id="settingsBtn" title="設定(部署・キャラクター・APIキー)"><img src="icons/ui_settings.png" alt="" style="width:22px;height:22px;border-radius:6px;"></button>
+        <button class="icon-btn" id="resetBtn" title="リセットして最初から"><img src="icons/ui_reset.png" alt="" style="width:22px;height:22px;border-radius:6px;"></button>
       </div>
     </div>
 
@@ -468,7 +468,7 @@
         <h2>部署一覧
           <span class="indicator-group">
             <button class="report-indicator-btn" id="reportIndicatorBtn" title="中間報告が届いています"><img src="icons/owner_check.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></button>
-            <button class="gate-indicator-btn" id="gateIndicatorBtn" title="プロジェクトオーナーチェックが必要です">🚦</button>
+            <button class="gate-indicator-btn" id="gateIndicatorBtn" title="プロジェクトオーナーチェックが必要です"><img src="icons/ui_gate.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></button>
           </span>
         </h2>
         <div id="deptDiagram"></div>
@@ -1003,7 +1003,7 @@
     renderDeptList();
     renderLog();
     renderArtifacts();
-    $('playBtn').textContent = state.running ? '⏸' : '▶';
+    $('playBtn').innerHTML = `<img src="icons/ui_${state.running ? 'pause' : 'play'}.png" alt="" style="width:22px;height:22px;border-radius:6px;">`;
     persistActiveSession();
   }
 
